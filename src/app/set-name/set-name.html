@@ -1,0 +1,35 @@
+<div id="dlg-container"
+     cdkDrag
+     cdkDragRootElement=".modal-dlg"
+     cdkDragBoundary="#modal-container">
+    <div id="dlg-head">
+        <div id="edit-title" cdkDragHandle>
+            attr-name
+        </div>
+        <button id="closeBtn" (click)="close()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+
+    <div class="name-field">
+        <label>name:</label>
+        <input #attrName
+               id="attrName"
+               type="text"
+               [minlength]="minNameLen"
+               [maxlength]="maxNameLen"
+               required
+               [ngModel]="name"
+               (ngModelChange)="onNameChange(attrName.value)">
+    </div>
+
+    <div class="set-actions">
+        <div>
+            <button id="saveBtn"
+                    (click)="save()"
+                    [disabled]="!isValid()">
+                save
+            </button>
+        </div>
+    </div>
+</div>

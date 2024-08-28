@@ -1,0 +1,119 @@
+#dlg-container {
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow: auto;
+}
+
+#dlg-head {
+    background: #e8e8e8;
+    padding: 6px;
+}
+
+label {
+    padding-right: 0.5rem;
+    white-space: nowrap;
+}
+
+button {
+    font-size: 1.0rem;
+    color: gray;
+}
+
+input[type="number"] {
+    padding: 4px;
+    font-size: 1rem;
+    text-align: center;
+    width: 4rem;
+}
+
+input[type="color"] {
+    padding: 2px;
+    width: 3rem;
+    height: 2rem;
+    margin-right: 10px;
+}
+
+input[type="checkbox"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-right: 4px;
+}
+
+input[type="text"] {
+    padding: 6px;
+    font-size: 1rem;
+    flex: 1 1 100%;
+}
+
+input[type="text"]:invalid {
+    border: 1px solid red;
+    border-radius: 4px;
+    background-color: yellow;
+}
+
+select {
+    height: 2rem;
+    width: 6rem;
+    font-size: 1rem;
+}
+
+#edit-title {
+    width: 100%;
+    padding-left: 6px;
+    user-select: none;
+    cursor: move;
+    color: gray;
+    font-size: 1rem;
+}
+
+#testCont {
+    padding: 10px;
+    border: solid 1px lightgray;
+}
+
+.cards-common {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 10px;
+}
+
+#styles-card {
+    overflow: auto;
+}
+
+#borders-card {
+    border: solid 1px lightgray;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+#paddings-card {
+    border: solid 1px lightgray;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+.set-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    padding: 10px;
+    background: #e8e8e8;
+}
+
+.style-field {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 10px;
+}
+
+#saveBtn {
+    padding: 4px 20px;
+}

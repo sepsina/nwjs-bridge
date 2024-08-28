@@ -1,0 +1,71 @@
+#dlg-container {
+    padding: 2px;
+    min-width: 300px;
+}
+
+#dlg-head {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    background: #e8e8e8;
+    padding: 6px;
+}
+
+label {
+    padding-right: 0.5rem;
+}
+
+button {
+    font-size: 1.0rem;
+    color: gray;
+}
+
+input {
+    padding: 6px;
+    font-size: 1rem;
+    flex: 1 1 100%;
+}
+
+input:invalid {
+    border: 1px solid red;
+    border-radius: 4px;
+    background-color: yellow;
+}
+
+#saveBtn {
+    padding: 4px 20px;
+}
+
+#edit-title {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding-left: 6px;
+    user-select: none;
+    cursor: move;
+    color: gray;
+    font-size: 1.0rem;
+}
+
+.name-field {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 10px;
+}
+
+.set-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+    background: #e8e8e8;
+}

@@ -2,10 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>BridgeHtmlTest</title>
+  <title>Bridge</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script>
+	window.nw_global = window.global;
+	window.global = undefined;
+  </script>
+  <link href="./assets/fonts/material-icons/material-icons.css" rel="stylesheet">
+  <link href="./assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <style>
+    @font-face {
+        font-family: appFont;
+        src: url("./assets/fonts/VarelaRound-Regular.ttf");
+    }
+  </style>
 </head>
 <body>
   <app-root></app-root>

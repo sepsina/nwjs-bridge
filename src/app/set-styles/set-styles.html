@@ -1,0 +1,161 @@
+<div id="dlg-container"
+     cdkDrag
+     cdkDragRootElement=".modal-dlg"
+     cdkDragBoundary="#modal-container">
+
+    <div class='right-center' id="dlg-head">
+        <div class="left-center" id="edit-title" cdkDragHandle>
+            {{selAttr.name}}
+        </div>
+        <button id="closeBtn" (click)="close()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+
+    <div class="center-center" id="testCont">
+        <div #testView id="testView">
+            {{selAttr.formatedVal}}
+        </div>
+    </div>
+
+    <div class="cards-common" id="styles-card">
+        <div class="style-field">
+            <label>text color:</label>
+            <input #attrColor
+                id="attrColor"
+                type="color"
+                [ngModel]="attr_color"
+                (change)="onColorChange(attrColor.value)">
+        </div>
+        <div class="style-field">
+            <label>background color:</label>
+            <input #attrBackgroundColor
+                id="attrBackgroundColor"
+                type="color"
+                [ngModel]="attr_background_color"
+                (change)="onBackgroundColorChange(attrBackgroundColor.value)"
+                [disabled]="attrBgTrans.checked">
+            <input #attrBgTrans
+                id="attrBgTrans"
+                type="checkbox"
+                [ngModel]="attr_bg_trans"
+                (change)="onBgTransChange(attrBgTrans.checked)">
+            <label>transparent</label>
+        </div>
+        <div class="style-field">
+            <label>font size:</label>
+            <input #attrFontSize
+                id="attrFontSize"
+                type="number"
+                [min]="minFontSize"
+                [max]="maxFontSize"
+                required
+                [ngModel]="attr_font_size"
+                (ngModelChange)="onFontSizeChange(attrFontSize.value)"
+                (blur)="onFontSizeBlur(attrFontSize.value)">
+        </div>
+        <div class="cards-common" id="borders-card">
+            <div class="style-field">
+                <label>border color:</label>
+                <input #attrBorderColor
+                    id="attrBorderColor"
+                    type="color"
+                    [ngModel]="attr_border_color"
+                    (change)="onBorderColorChange(attrBorderColor.value)">
+            </div>
+            <div class="style-field">
+                <label>border width:</label>
+                <input #attrBorderWidth
+                        id="attrBorderWidth"
+                        type="number"
+                        min="0"
+                        [max]="maxBorderWidth"
+                        [ngModel]="attr_border_width"
+                        (ngModelChange)="onBorderWidthChange(attrBorderWidth.value)"
+                        (blur)="onBorderWidthBlur(attrBorderWidth.value)">
+            </div>
+            <div class="style-field">
+                <label>border radius:</label>
+                <input #attrBorderRadius
+                        id="attrBorderRadius"
+                        type="number"
+                        min="0"
+                        [max]="maxBorderRadius"
+                        [ngModel]="attr_border_radius"
+                        (ngModelChange)="onBorderRadiusChange(attrBorderRadius.value)"
+                        (blur)="onBorderRadiusBlur(attrBorderRadius.value)">
+            </div>
+            <div class="style-field">
+                <label>border style:</label>
+                <select id="borderStyle"
+                        #borderStyle
+                        (change)="onBorderStyleChange(borderStyle.value)">
+                    <option *ngFor="let border_style of borderStyles"
+                            value="{{border_style}}">
+                        {{border_style}}
+                    </option>
+                </select>
+            </div>
+        </div>
+        <div class="cards-common" id="paddings-card">
+            <div class="style-field">
+                <label>padding-top:</label>
+                <input #attrPaddingTop
+                    id="attrPaddingTop"
+                    type="number"
+                    min="0"
+                    [max]="maxPaddingTop"
+                    required
+                    [ngModel]="attr_padding_top"
+                    (ngModelChange)="onPaddingTopChange(attrPaddingTop.value)"
+                    (blur)="onPaddingTopBlur(attrPaddingTop.value)">
+            </div>
+            <div class="style-field">
+                <label>padding right:</label>
+                <input #attrPaddingRight
+                    id="attrPaddingRight"
+                    type="number"
+                    min="0"
+                    [max]="maxPaddingRight"
+                    required
+                    [ngModel]="attr_padding_right"
+                    (ngModelChange)="onPaddingRightChange(attrPaddingRight.value)"
+                    (blur)="onPaddingRightBlur(attrPaddingRight.value)">
+            </div>
+            <div class="style-field">
+                <label>padding bottom:</label>
+                <input #attrPaddingBottom
+                    id="attrPaddingBottom"
+                    type="number"
+                    min="0"
+                    [max]="maxPaddingBottom"
+                    required
+                    [ngModel]="attr_padding_bottom"
+                    (ngModelChange)="onPaddingBottomChange(attrPaddingBottom.value)"
+                    (blur)="onPaddingBottomBlur(attrPaddingBottom.value)">
+            </div>
+            <div class="style-field">
+                <label>padding left:</label>
+                <input #attrPaddingLeft
+                    id="attrPaddingLeft"
+                    type="number"
+                    min="0"
+                    [max]="maxPaddingLeft"
+                    required
+                    [ngModel]="attr_padding_left"
+                    (ngModelChange)="onPaddingLeftChange(attrPaddingLeft.value)"
+                    (blur)="onPaddingLeftBlur(attrPaddingLeft.value)">
+            </div>
+        </div>
+    </div>
+
+    <div class="set-actions">
+        <div>
+            <button id="saveBtn"
+                    (click)="save()"
+                    [disabled]="!isValid()">
+                save
+            </button>
+        </div>
+    </div>
+</div>
