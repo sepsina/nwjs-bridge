@@ -30,10 +30,20 @@
     border-radius: 10px;
 }
 
-button {
-    font-size: 1.0rem;
+.part-desc {
+    border: solid 1px #ccc;
+    border-radius: 6px;
+    min-height: 80px;
+    padding: 0.5em;
+    gap: 2px;
+  }
+
+.desc-label {
     color: gray;
-    padding: 4px 8px;
+}
+
+.desc-value {
+    padding-left: 0.4rem;
 }
 
 input[type="text"] {
@@ -44,17 +54,22 @@ input[type="text"] {
     border-bottom: 1px solid lightgrey;
 }
 
-input:invalid {
-    border: 1px solid red;
-    border-radius: 4px;
-    background-color: yellow;
+select {
+    height: 2rem;
+    width: 100%;
+    text-align: center;
+    font-size: 1rem;
+    border-radius: 6px;
+}
+
+button {
+    font-size: 1.0rem;
+    color: gray;
+    padding: 4px 8px;
 }
 
 label {
+    //padding-right: 0.5rem;
     white-space: nowrap;
     color: gray;
-}
-
-.name-field {
-    margin: 10px;
 }

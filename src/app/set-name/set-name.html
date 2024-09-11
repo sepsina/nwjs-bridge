@@ -1,35 +1,36 @@
-<div id="dlg-container"
+<div class="col-top-strech"
      cdkDrag
-     cdkDragRootElement=".modal-dlg"
+     cdkDragRootElement="#name-dlg"
      cdkDragBoundary="#modal-container">
-    <div id="dlg-head">
-        <div id="edit-title" cdkDragHandle>
-            attr-name
+
+    <div class="row-right dlg-header">
+        <div class="row-left dlg-title" cdkDragHandle>
+            {{title}}
         </div>
-        <button id="closeBtn" (click)="close()">
+        <button (click)="close()">
             <i class="fa fa-times"></i>
         </button>
     </div>
 
-    <div class="name-field">
-        <label>name:</label>
-        <input #attrName
-               id="attrName"
-               type="text"
-               [minlength]="minNameLen"
-               [maxlength]="maxNameLen"
-               required
-               [ngModel]="name"
-               (ngModelChange)="onNameChange(attrName.value)">
+    <div class="col-top-strech" id="dlg-body">
+        <div class="col-top-strech cards-common">
+            <div class="row-left">
+                <label>name:</label>
+                <input #attrName
+                       id="attrName"
+                       type="text"
+                       [minLength]="minNameLen"
+                       [maxLength]="maxNameLen"
+                       size="16"
+                       (change)="onNameChange(attrName.value)"
+                       (blur)="onNameBlur(attrName.value)">
+            </div>
+        </div>
     </div>
 
-    <div class="set-actions">
-        <div>
-            <button id="saveBtn"
-                    (click)="save()"
-                    [disabled]="!isValid()">
-                save
-            </button>
-        </div>
+    <div class="row-right dlg-header">
+        <button (click)="save()">
+            save
+        </button>
     </div>
 </div>

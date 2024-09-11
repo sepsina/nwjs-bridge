@@ -1,51 +1,50 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, NgZone, OnDestroy, Renderer2 } from '@angular/core';
+import {
+    AfterViewInit,
+    Component,
+    ElementRef,
+    OnInit,
+    ViewChild,
+    NgZone,
+    OnDestroy
+} from '@angular/core';
+import { DragDropModule } from "@angular/cdk/drag-drop";
+import { CdkDrag, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { ResizeObserverDirective } from './directives/resize-observer.directive';
+import {
+    CdkMenu,
+    CdkMenuItem,
+    CdkContextMenuTrigger,
+} from '@angular/cdk/menu';
+import { CommonModule } from '@angular/common';
+//import { FormsModule } from '@angular/forms';
 
+import { ModalService } from './services/modal.service';
 import { StorageService } from './services/storage.service';
-
-//import { SetStyles } from './set-styles/set-styles.page';
-//import { EditScrolls } from './edit-scrolls/edit-scrolls';
-//import { EditBinds } from './binds/binds.page';
-//import { EditStats } from './x-stat/x_stat.page';
+import { EventsService } from './services/events.service';
+import { SerialLinkService } from './services/serial-link.service';
+import { UtilsService } from './services/utils.service';
+// test
+import { TestService } from './services/test.service';
+// test
 
 import * as gConst from './gConst';
 import * as gIF from './gIF';
 
-import { DialogModule } from '@angular/cdk/dialog';
-import { CdkDrag, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-
-//import { ShowLogs } from './logs/show-logs';
-//import { About } from './about/about';
-//import { SSR } from './ssr/ssr';
-//import { SetName } from './set-name/set-name';
-//import { Graph } from './graph/graph';
-//import { MoveElement } from './move-element/move-element';
-//import { SetCorr } from './set-corr/set-corr';
-import { CdkContextMenuTrigger, CdkMenuModule } from '@angular/cdk/menu';
-import { AngularMaterialModule } from './angular-material/angular-material.module';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ModalService } from './services/modal.service';
-import { EventsService } from './services/events.service';
-
-const dumyScroll: gIF.scroll_t = {
-    name: gConst.DUMMY_SCROLL,
-    yPos: 0
-}
 
 const wait_msg = '--------';
-
 
 @Component({
     selector: 'app-root',
     standalone: true,
     imports: [
-        AngularMaterialModule,
         CommonModule,
-        FormsModule,
-        ReactiveFormsModule,
-        DialogModule,
-        CdkMenuModule
+        //FormsModule,
+        DragDropModule,
+        CdkContextMenuTrigger,
+        CdkMenu,
+        CdkMenuItem,
+        ResizeObserverDirective
     ],
     templateUrl: 'app.component.html',
     styleUrls: ['app.component.scss']
@@ -58,27 +57,24 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     @ViewChild(CdkContextMenuTrigger) ctxMenu!: CdkContextMenuTrigger;
 
+
     bkgImgWidth = 0;
     bkgImgHeight = 0;
     imgUrl = '';
     imgDim = {} as gIF.imgDim_t;
     planPath = '';
 
-    scrolls: gIF.scroll_t[] = [
-        dumyScroll,
-        { name: 'pos_1', yPos: 20 },
-        { name: 'pos_2', yPos: 30 }
-    ];
+    scrolls: gIF.scroll_t[] = [gConst.dumyScroll];
     selScroll = this.scrolls[0];
 
     partDesc: gIF.partDesc_t[] = [];
     partMap = new Map();
 
-    progressFlag = false;
-    waitMsg = 'wait';
-    msgIdx = 0;
+    loadFlag = false;
 
+    dragRef!: CdkDrag;
     selAttr = {} as gIF.keyVal_t;
+
     ctrlFlag = false;
     graphFlag = false;
     corrFlag = false;
@@ -87,16 +83,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     footerTmo: any;
     footerStatus = '';
 
-    dragRef!: CdkDrag;
-
-    trash = 0;
-
-    constructor(public storage: StorageService,
-                private events: EventsService,
-                public modal: ModalService,
-                private httpClient: HttpClient,
-                private ngZone: NgZone,
-                private renderer: Renderer2) {
+    constructor(
+        public storage: StorageService,
+        private events: EventsService,
+        public modal: ModalService,
+        private httpClient: HttpClient,
+        private utils: UtilsService,
+        private ngZone: NgZone,
+        public serialLink: SerialLinkService,
+        public testService: TestService
+    ) {
         // ---
     }
 
@@ -124,9 +120,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             // ---
         };
 
-        this.events.subscribe('nameDlgEvt', (dlgReturn: string)=>{
-            const ret: gIF.nameDlgReturn_t = JSON.parse(dlgReturn);
-            console.log(ret);
+        this.events.subscribe('scrollDlgEvt', (newScrolls: gIF.scroll_t[])=>{
+            this.scrolls = newScrolls;
+            this.scrolls.unshift(gConst.dumyScroll);
+            this.storage.setScrolls(this.scrolls);
+            //this.selScroll = this.scrolls[0];
         });
 
         try {
@@ -136,6 +134,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch(e) {
             console.log(e);
         }
+
+        setTimeout(() => {
+            this.serialLink.initApp();
+        }, 100);
     }
 
     /***********************************************************************************************
@@ -146,34 +148,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     ngOnDestroy() {
         // ---
-    }
-
-    /***********************************************************************************************
-     * fn          scrollSelChange
-     *
-     * brief
-     *
-     */
-    scrollSelChange(){
-
-        console.log(this.scrollSelRef.nativeElement.value);
-        /*
-        if(scroll.value){
-            if(scroll.value.name !== gConst.DUMMY_SCROLL){
-                const x = 0;
-                const y = (scroll.value.yPos * this.imgDim.height) / 100;
-
-                this.containerRef.nativeElement.scrollTo({
-                    top: y,
-                    left: x,
-                    behavior: 'smooth'
-                });
-                setTimeout(() => {
-                    this.selScroll = this.scrolls[0];
-                }, 1000);
-            }
-        }
-        */
     }
 
     /***********************************************************************************************
@@ -219,24 +193,24 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             let divDim = el.getBoundingClientRect();
             this.imgDim.width = divDim.width;
             this.imgDim.height = Math.round((divDim.width / bkgImg.width) * bkgImg.height);
-            this.renderer.setStyle(el, 'height', `${this.imgDim.height}px`);
-            this.renderer.setStyle(el, 'backgroundImage', `url(${bkgImgPath})`);
-            this.renderer.setStyle(el, 'backgroundAttachment', 'scroll');
-            this.renderer.setStyle(el, 'backgroundRepeat', 'no-repeat');
-            this.renderer.setStyle(el, 'backgroundSize', 'contain');
+            el.style.height = `${this.imgDim.height}px`;
+            el.style.backgroundImage = `url(${bkgImgPath})`
+            el.style.backgroundAttachment = 'scroll';
+            el.style.backgroundRepeat = 'no-repeat';
+            el.style.backgroundSize = 'contain';
         };
         bkgImg.src = bkgImgPath;
 
-        /*
         const nvScrolls = JSON.parse(this.storage.getScrolls());
         if(nvScrolls){
             this.scrolls = [];
             for(let i = 0; i < nvScrolls.length; i++){
                 this.scrolls.push(nvScrolls[i]);
             }
-            this.selScroll = this.scrolls[0];
+            setTimeout(()=>{
+                this.scrollSelRef.nativeElement.value = '0';
+            }, 0);
         }
-        */
     }
 
     /***********************************************************************************************
@@ -250,7 +224,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         const attr = keyVal.value;
 
         let retStyle = {
-            color: attr.style.color,
+            'color': attr.style.color,
             'background-color': attr.style.bgColor,
             'font-size.px': attr.style.fontSize,
             'border-color': attr.style.borderColor,
@@ -263,7 +237,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             'padding-left.px': attr.style.paddingLeft,
         };
         if(attr.isValid == false) {
-            retStyle.color = 'gray';
+            retStyle['color'] = 'gray';
             retStyle['background-color'] = 'transparent';
             retStyle['border-color'] = 'gray';
             retStyle['border-width.px'] = 2;
@@ -336,27 +310,12 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     setStyles() {
-        // ...
 
+        this.modal.dlgData = {
+            keyVal: this.selAttr
+        }
         this.modal.dlgType = gIF.eDlgType.E_ATTR_STYLE;
         this.modal.openDlg();
-        /*
-        this.startWait();
-        setTimeout(()=>{
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = keyVal;
-            dialogConfig.width = '350px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'set-styles-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(SetStyles, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
-        */
     }
 
     /***********************************************************************************************
@@ -367,300 +326,172 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
 
     setName() {
-        const nameDlgData = {} as gIF.nameDlgData_t;
-        nameDlgData.type = gIF.eDlgType.E_ATTR_NAME;
-        nameDlgData.name = 'current name';
 
-        this.modal.dlgData = nameDlgData;
+        this.modal.dlgData = {
+            keyVal: this.selAttr
+        }
         this.modal.dlgType = gIF.eDlgType.E_ATTR_NAME;
         this.modal.openDlg();
-        /*
-        this.startWait();
-        setTimeout(()=>{
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = keyVal;
-            dialogConfig.width = '250px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'set-name-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(SetName, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
-        */
     }
     /***********************************************************************************************
      * @fn          setCorr
      *
      * @brief
      *
-     *
-    setCorr(keyVal: gIF.keyVal_t) {
+     */
+    setCorr() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = keyVal;
-            dialogConfig.width = '250px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'set-corr-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(SetCorr, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgData = {
+            keyVal: this.selAttr
+        }
+        this.modal.dlgType = gIF.eDlgType.E_UNITS;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          graph
      *
      * @brief
      *
-     *
-    graph(keyVal: gIF.keyVal_t) {
-
-        this.startWait();
-        setTimeout(()=>{
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = keyVal;
-            dialogConfig.width = '70%';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'graph-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(Graph, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+     */
+    graph() {
+        this.modal.dlgData = {
+            keyVal: this.selAttr
+        }
+        this.modal.dlgType = gIF.eDlgType.E_GRAPH;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
-     * @fn          onEditScrollsClick
+     * @fn          editScrolls
      *
      * @brief
      *
-     *
-    onEditScrollsClick() {
+     */
+    editScrolls() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                scrolls: JSON.parse(JSON.stringify(this.scrolls)),
-                scrollRef: this.containerRef.nativeElement,
-                imgDim: this.imgDim,
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.width = '250px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'edit-scrolls-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(EditScrolls, dialogConfig);
-
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-            dlgRef.afterClosed().subscribe((data: gIF.scroll_t[]) => {
-                if(data){
-                    this.scrolls = data;
-                    this.scrolls.unshift(dumyScroll);
-                    this.storage.setScrolls(this.scrolls);
-                    this.selScroll = this.scrolls[0];
-                }
-            });
-        }, 10);
+        this.modal.dlgData = {
+            scrolls: this.scrolls,
+            containerRef: this.containerRef.nativeElement,
+            imgDim: this.imgDim,
+        }
+        this.modal.dlgType = gIF.eDlgType.E_SCROLLS;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          moveElement
      *
      * @brief
      *
-     *
+     */
     moveElement() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                scrolls: JSON.stringify(this.scrolls),
-                containerRef: this.containerRef.nativeElement,
-                imgDim: this.imgDim,
-                selAttr: this.selAttr,
-                dragRef: this.dragRef
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.width = '300px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'move-element-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(MoveElement, dialogConfig);
-
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-            dlgRef.afterClosed().subscribe((data: gIF.scroll_t[]) => {
-                if(data){
-                    // ---
-                }
-            });
-        }, 10);
+        this.modal.dlgData = {
+            scrolls: JSON.stringify(this.scrolls),
+            containerRef: this.containerRef.nativeElement,
+            imgDim: this.imgDim,
+            selAttr: this.selAttr,
+            dragRef: this.dragRef
+        }
+        this.modal.dlgType = gIF.eDlgType.E_MOVE;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          editBinds
      *
      * @brief
      *
-     *
+     */
     editBinds() {
-
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                partMap: this.partMap,
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'edit-binds-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(EditBinds, dialogConfig);
-
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgData = {
+            partsMap: this.partMap
+        }
+        this.modal.dlgType = gIF.eDlgType.E_BINDS;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          editThermostats
      *
      * @brief
      *
-     *
+     */
     editThermostats() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                partMap: this.partMap,
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'edit-thermostats-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(EditStats, dialogConfig);
-
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgData = {
+            partsMap: this.partMap
+        }
+        this.modal.dlgType = gIF.eDlgType.E_STATS;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          showLogs
      *
      * @brief
      *
-     *
+     */
     showLogs() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                dummy: 10,
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.width = '65%';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'show-logs-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(ShowLogs, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgType = gIF.eDlgType.E_LOGS
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          showAbout
      *
      * @brief
      *
-     *
+     */
     showAbout() {
 
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                attr: this.selAttr.value,
-                partMap: this.partMap
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.width = '40%';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'show-about-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(About, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgData = {
+            attr: this.selAttr.value,
+            partsMap: this.partMap
+        }
+        this.modal.dlgType = gIF.eDlgType.E_ABOUT;
+        this.modal.openDlg();
     }
-    */
+
     /***********************************************************************************************
      * @fn          showSSR
      *
      * @brief
      *
-     *
+     */
     showSSR() {
-
-        this.startWait();
-        setTimeout(()=>{
-            const dlgData = {
-                attr: this.selAttr.value
-            };
-            const dialogConfig = new MatDialogConfig();
-            dialogConfig.data = dlgData;
-            dialogConfig.width = '350px';
-            dialogConfig.autoFocus = false;
-            dialogConfig.disableClose = true;
-            dialogConfig.panelClass = 'show-ssr-container';
-            dialogConfig.restoreFocus = false;
-
-            const dlgRef = this.matDialog.open(SSR, dialogConfig);
-            dlgRef.afterOpened().subscribe(()=>{
-                this.progressFlag = false;
-            });
-        }, 10);
+        this.modal.dlgData = {
+            attr: this.selAttr.value
+        }
+        this.modal.dlgType = gIF.eDlgType.E_SSR;
+        this.modal.openDlg();
     }
-    */
 
+    /***********************************************************************************************
+     * fn          scrollSelChange
+     *
+     * brief
+     *
+     */
+    scrollSelChange(idx: string){
+
+        const i = parseInt(idx);
+
+        if(i > 0){
+            const x = 0;
+            const y = (this.scrolls[i].yPos * this.imgDim.height) / 100;
+            this.containerRef.nativeElement.scrollTo({
+                top: y,
+                left: x,
+                behavior: 'smooth'
+            });
+            setTimeout(() => {
+                this.scrollSelRef.nativeElement.value = '0';
+            }, 1000);
+        }
+    }
 
     /***********************************************************************************************
      * fn          onResize
@@ -670,57 +501,46 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     onResize(event: any) {
 
-        console.log(`with: ${window.innerWidth}`);
-
         const rect = event.contentRect;
         console.log(`w: ${rect.width}, h: ${rect.height}`);
-        const el = this.floorPlanRef.nativeElement;
 
         this.imgDim.width = rect.width;
         this.imgDim.height = Math.round((rect.width / this.bkgImgWidth) * this.bkgImgHeight);
         this.ngZone.run(()=>{
-            this.renderer.setStyle(el, 'height', `${this.imgDim.height}px`);
+            this.floorPlanRef.nativeElement.style.height = `${this.imgDim.height}px`
         });
     }
 
     /***********************************************************************************************
-     * fn          startWait
+     * fn          mouseEnterAttr
      *
      * brief
      *
      */
-    startWait(){
+    mouseEnterAttr(keyVal: gIF.keyVal_t){
 
-        this.progressFlag = true;
-        this.waitMsg = 'wait...';
-        /*
-        this.msgIdx = 0;
-        setTimeout(() => {
-            this.incrWait()
-        }, 250);
-        */
+        const attr = keyVal.value;
+        const partDesc: gIF.part_t = this.partMap.get(attr.partNum);
+
+        this.footerStatus  = `${attr.name}: `;
+        this.footerStatus += `${partDesc.part}`;
+        this.footerStatus += ` -> ${partDesc.devName}`;
+        this.footerStatus += ` @ ${this.utils.extToHex(attr.extAddr)}`;
+        clearTimeout(this.footerTmo);
+        this.footerTmo = setTimeout(()=>{
+            this.footerStatus = '';
+        }, 5000);
+
     }
 
     /***********************************************************************************************
-     * fn          incrWait
+     * fn          mouseLeaveAttr
      *
      * brief
      *
      */
-    incrWait(){
-
-        if(this.progressFlag === true){
-            let strArr = wait_msg.split('');
-            strArr[this.msgIdx] = 'x';
-            this.waitMsg = strArr.join('');
-            this.msgIdx++;
-            if(this.msgIdx === wait_msg.length){
-                this.msgIdx = 0;
-            }
-            setTimeout(() => {
-                this.incrWait()
-            }, 250);
-        }
+    mouseLeaveAttr(){
+        this.footerStatus = '';
     }
 
     /***********************************************************************************************
@@ -743,6 +563,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.ctrlFlag = true;
                 break;
             }
+            case gConst.SHT40_018_T:
+            case gConst.SHT40_018_RH:
+            case gConst.SI7021_027_T:
+            case gConst.SI7021_027_RH:
             case gConst.HTU21D_005_T:
             case gConst.HTU21D_005_RH: {
                 this.corrFlag = true;

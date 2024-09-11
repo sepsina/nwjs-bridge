@@ -1,11 +1,9 @@
 import {
     Component,
-    OnInit,
     AfterViewInit,
-    NgZone,
-    OnDestroy,
     ViewChild,
-    ElementRef
+    ElementRef,
+    HostBinding
 } from '@angular/core';
 
 import { ModalService } from '../services/modal.service';
@@ -32,38 +30,44 @@ import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
     templateUrl: './set-name.html',
     styleUrls: ['./set-name.scss'],
 })
-export class SetName implements OnInit, AfterViewInit, OnDestroy {
+export class SetName implements AfterViewInit {
 
-    @ViewChild('attrName') attrName!: ElementRef;
+    @ViewChild('attrName') attrNameRef!: ElementRef;
+    @HostBinding('attr.id') hostID = 'name-dlg';
 
     name = '';
-    minNameLen = 3;
-    maxNameLen = 16;
+    minNameLen = 2;
+    maxNameLen = 8;
+
+    title = '';
 
     dlgData = {} as gIF.nameDlgData_t;
     dlgReturn = {} as gIF.nameDlgReturn_t;
 
-    constructor(public events: EventsService,
-                public modal: ModalService,
-                public ngZone: NgZone,
-                public storage: StorageService) {
-        this.dlgData = this.modal.dlgData as gIF.nameDlgData_t;
-        this.name = this.dlgData.name;
+    //selAttr = {} as gIF.keyVal_t;
+
+    constructor(
+        public modal: ModalService,
+        public events: EventsService,
+        public storage: StorageService
+    ) {
+        //this.selAttr = this.modal.dlgData.keyVal;
+        this.name = this.modal.dlgData.keyVal.value.name;
+        this.title = this.name;
     }
 
-    ngOnDestroy(): void {
-        // ---
-    }
-
+    /***********************************************************************************************
+     * @fn          ngAfterViewInit
+     *
+     * @brief
+     *
+     */
     ngAfterViewInit(): void {
         setTimeout(()=>{
-            this.attrName.nativeElement.focus();
-            this.attrName.nativeElement.select();
+            this.attrNameRef.nativeElement.value = this.name;
+            this.attrNameRef.nativeElement.focus();
+            this.attrNameRef.nativeElement.select();
         }, 0);
-    }
-
-    ngOnInit() {
-        // ---
     }
 
     /***********************************************************************************************
@@ -73,11 +77,7 @@ export class SetName implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     save() {
-
-        this.dlgReturn.status = 0;
-        this.dlgReturn.name = this.name;
-        this.events.publish('nameDlgEvt', JSON.stringify(this.dlgReturn));
-
+        this.storage.setAttrName(this.name, this.modal.dlgData.keyVal);
         this.modal.closeDlg();
     }
     /***********************************************************************************************
@@ -96,29 +96,35 @@ export class SetName implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    onNameChange(newVal: string){
-        console.log(`new val: ${newVal}`);
-        this.name = newVal;
+    onNameChange(newName: string){
+
+        console.log(`new val: ${newName}`);
+
+        const nameLen = newName.length;
+        if(newName == '' || nameLen < this.minNameLen) {
+            return;
+        }
+        if(nameLen > this.maxNameLen){
+            this.attrNameRef.nativeElement.value = this.name;
+            return;
+        }
+        this.name = newName;
     }
 
     /***********************************************************************************************
-     * @fn          isValid
+     * @fn          onNameBlur
      *
      * @brief
      *
      */
-    isValid(){
+    onNameBlur(newName: string){
 
-        const len = this.name.length;
+        console.log(`name blur: ${newName}`);
 
-        if(len < this.minNameLen){
-            return false;
+        const nameLen = newName.length;
+        if(newName == '' || (nameLen < this.minNameLen)) {
+            this.attrNameRef.nativeElement.value = this.name;
         }
-        if(len > this.maxNameLen){
-            return false;
-        }
-
-        return true;
     }
 
 }

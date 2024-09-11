@@ -145,11 +145,13 @@ export class UtilsService {
     }
 
     public extToHex(extAddr: number) {
-        let buf = window.nw.Buffer.alloc(8);
-        buf.writeDoubleBE(extAddr);
+        //let buf = window.nw.Buffer.alloc(8);
+        let buf = new Uint8Array(8);
+        let bufView = new DataView(buf.buffer);
+        bufView.setFloat64(0, extAddr, true);
         let extHex = [];
         for (let i = 0; i < 8; i++) {
-            extHex[i] = buf.readUInt8(i).toString(16).padStart(2, '0').toUpperCase();
+            extHex[i] = bufView.getUint8(i).toString(16).padStart(2, '0').toUpperCase();
         }
         return extHex.join(':');
     }

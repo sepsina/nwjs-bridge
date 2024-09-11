@@ -1,48 +1,25 @@
-<div id="dlg-container"
+<div class="col-top-strech"
      cdkDrag
-     cdkDragRootElement=".modal-dlg"
+     cdkDragRootElement="#styles-dlg"
      cdkDragBoundary="#modal-container">
 
-    <div class='right-center' id="dlg-head">
-        <div class="left-center" id="edit-title" cdkDragHandle>
-            {{selAttr.name}}
+    <div class='row-right dlg-header'>
+        <div class="row-left dlg-title" cdkDragHandle>
+            {{dlg_title}}
         </div>
-        <button id="closeBtn" (click)="close()">
+        <button (click)="close()">
             <i class="fa fa-times"></i>
         </button>
     </div>
 
-    <div class="center-center" id="testCont">
-        <div #testView id="testView">
-            {{selAttr.formatedVal}}
+    <div class="row-center" id="testCont">
+        <div #testView>
+            {{test_text}}
         </div>
     </div>
 
-    <div class="cards-common" id="styles-card">
-        <div class="style-field">
-            <label>text color:</label>
-            <input #attrColor
-                id="attrColor"
-                type="color"
-                [ngModel]="attr_color"
-                (change)="onColorChange(attrColor.value)">
-        </div>
-        <div class="style-field">
-            <label>background color:</label>
-            <input #attrBackgroundColor
-                id="attrBackgroundColor"
-                type="color"
-                [ngModel]="attr_background_color"
-                (change)="onBackgroundColorChange(attrBackgroundColor.value)"
-                [disabled]="attrBgTrans.checked">
-            <input #attrBgTrans
-                id="attrBgTrans"
-                type="checkbox"
-                [ngModel]="attr_bg_trans"
-                (change)="onBgTransChange(attrBgTrans.checked)">
-            <label>transparent</label>
-        </div>
-        <div class="style-field">
+    <div class="col-top-strech" id="dlg-body">
+        <div class="row-left">
             <label>font size:</label>
             <input #attrFontSize
                 id="attrFontSize"
@@ -50,110 +27,145 @@
                 [min]="minFontSize"
                 [max]="maxFontSize"
                 required
-                [ngModel]="attr_font_size"
+                [ngModel]="style.fontSize"
                 (ngModelChange)="onFontSizeChange(attrFontSize.value)"
                 (blur)="onFontSizeBlur(attrFontSize.value)">
         </div>
-        <div class="cards-common" id="borders-card">
-            <div class="style-field">
-                <label>border color:</label>
+        <div class="row-left">
+            <label>text color:</label>
+            <input #attrColor
+                id="attrColor"
+                type="color"
+                [ngModel]="style.color"
+                (change)="onColorChange(attrColor.value)">
+        </div>
+        <div class="row-left">
+            <label>background color:</label>
+            <input #attrBackgroundColor
+                id="attrBackgroundColor"
+                type="color"
+                [ngModel]="style.bgColor"
+                (change)="onBackgroundColorChange(attrBackgroundColor.value)">
+        </div>
+        <div class="row-left">
+            <label>opacity:</label>
+            <input #attrOpacity
+                id="attrOpacity"
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                [ngModel]="style.bgOpacity"
+                (change)="onOpacityChange(attrOpacity.value)">
+        </div>
+        <div class="col-top-strech cards-common">
+            <div class="row-left">
+                border:
+            </div>
+            <div class="row-left">
+                <label>color:</label>
                 <input #attrBorderColor
                     id="attrBorderColor"
                     type="color"
-                    [ngModel]="attr_border_color"
+                    [ngModel]="style.borderColor"
                     (change)="onBorderColorChange(attrBorderColor.value)">
             </div>
-            <div class="style-field">
-                <label>border width:</label>
+            <div class="row-left">
+                <label>width:</label>
                 <input #attrBorderWidth
                         id="attrBorderWidth"
                         type="number"
                         min="0"
                         [max]="maxBorderWidth"
-                        [ngModel]="attr_border_width"
+                        [ngModel]="style.borderWidth"
                         (ngModelChange)="onBorderWidthChange(attrBorderWidth.value)"
                         (blur)="onBorderWidthBlur(attrBorderWidth.value)">
             </div>
-            <div class="style-field">
-                <label>border radius:</label>
+            <div class="row-left">
+                <label>radius:</label>
                 <input #attrBorderRadius
                         id="attrBorderRadius"
                         type="number"
                         min="0"
                         [max]="maxBorderRadius"
-                        [ngModel]="attr_border_radius"
+                        [ngModel]="style.borderRadius"
                         (ngModelChange)="onBorderRadiusChange(attrBorderRadius.value)"
                         (blur)="onBorderRadiusBlur(attrBorderRadius.value)">
             </div>
-            <div class="style-field">
-                <label>border style:</label>
+            <div class="row-left">
+                <label>style:</label>
                 <select id="borderStyle"
                         #borderStyle
+                        [ngModel]="style.borderStyle"
                         (change)="onBorderStyleChange(borderStyle.value)">
-                    <option *ngFor="let border_style of borderStyles"
-                            value="{{border_style}}">
-                        {{border_style}}
-                    </option>
+                    @for(style of borderStyles; track style) {
+                        <option value="{{style}}">
+                            {{style}}
+                        </option>
+                    }
                 </select>
             </div>
         </div>
-        <div class="cards-common" id="paddings-card">
-            <div class="style-field">
-                <label>padding-top:</label>
+        <div class="col-top-strech cards-common">
+            <div class="row-left">
+                paddings:
+            </div>
+            <div class="row-center">
                 <input #attrPaddingTop
                     id="attrPaddingTop"
                     type="number"
                     min="0"
                     [max]="maxPaddingTop"
                     required
-                    [ngModel]="attr_padding_top"
+                    [ngModel]="style.paddingTop"
                     (ngModelChange)="onPaddingTopChange(attrPaddingTop.value)"
                     (blur)="onPaddingTopBlur(attrPaddingTop.value)">
             </div>
-            <div class="style-field">
-                <label>padding right:</label>
-                <input #attrPaddingRight
+            <div class="row-center">
+                <div class="col-center">
+                    <input #attrPaddingLeft
+                    id="attrPaddingLeft"
+                    type="number"
+                    min="0"
+                    [max]="maxPaddingLeft"
+                    required
+                    [ngModel]="style.paddingLeft"
+                    (ngModelChange)="onPaddingLeftChange(attrPaddingLeft.value)"
+                    (blur)="onPaddingLeftBlur(attrPaddingLeft.value)">
+                </div>
+                <div class="col-center" id="padd-rect">
+                </div>
+                <div class="col-center">
+                    <input #attrPaddingRight
                     id="attrPaddingRight"
                     type="number"
                     min="0"
                     [max]="maxPaddingRight"
                     required
-                    [ngModel]="attr_padding_right"
+                    [ngModel]="style.paddingRight"
                     (ngModelChange)="onPaddingRightChange(attrPaddingRight.value)"
                     (blur)="onPaddingRightBlur(attrPaddingRight.value)">
+                </div>
             </div>
-            <div class="style-field">
-                <label>padding bottom:</label>
+            <div class="row-center">
                 <input #attrPaddingBottom
                     id="attrPaddingBottom"
                     type="number"
                     min="0"
                     [max]="maxPaddingBottom"
                     required
-                    [ngModel]="attr_padding_bottom"
+                    [ngModel]="style.paddingBottom"
                     (ngModelChange)="onPaddingBottomChange(attrPaddingBottom.value)"
                     (blur)="onPaddingBottomBlur(attrPaddingBottom.value)">
             </div>
-            <div class="style-field">
-                <label>padding left:</label>
-                <input #attrPaddingLeft
-                    id="attrPaddingLeft"
-                    type="number"
-                    min="0"
-                    [max]="maxPaddingLeft"
-                    required
-                    [ngModel]="attr_padding_left"
-                    (ngModelChange)="onPaddingLeftChange(attrPaddingLeft.value)"
-                    (blur)="onPaddingLeftBlur(attrPaddingLeft.value)">
-            </div>
+
         </div>
     </div>
 
-    <div class="set-actions">
+    <div class="row-right dlg-header">
         <div>
             <button id="saveBtn"
-                    (click)="save()"
-                    [disabled]="!isValid()">
+                    (click)="save()">
                 save
             </button>
         </div>

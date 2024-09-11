@@ -132,12 +132,13 @@ export const VOLT_UNIT = 4;
 //export const SCROLLS_KEY = 'scrolls';
 
 export const NG_STYLE = {
-    color: 'black',
-    bgColor: 'transparent',
+    color: '#000000',
+    bgColor: '#FFFFFF',
+    bgOpacity: 1.0,
     fontSize: 20,
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: 'black',
+    borderColor: '#000000',
     borderRadius: 0,
     paddingTop: 4,
     paddingRight: 6,
@@ -146,9 +147,9 @@ export const NG_STYLE = {
 };
 
 export const BORDER_STYLES = [
-    'solid',
-    'dashed',
-    'dotted'
+    "solid",
+    "dashed",
+    "dotted"
 ];
 
 export const RD_ATTR  = 0;
@@ -167,5 +168,71 @@ export const THERMOSTAT_HYSTERESIS = 0.5;
 
 export const FREE_LIST_LEN = 12;
 export const USED_LIST_LEN = 6;
+
+export const dummyOnOff: gIF.on_off_actuator_t = {
+    name: '- - - - -',
+    valid: false,
+    partNum: 0,
+    extAddr: 0,
+    shortAddr: 0,
+    endPoint: 0
+}
+
+export const dummyDesc: gIF.descVal_t[] = [
+    {
+        key: 'node:',
+        value: '- - - - -'
+    },
+    {
+        key: 'label:',
+        value: '- - - - -'
+    },
+    {
+        key: 's/n:',
+        value: '- -:- -:- -:- -:- -:- -:- -:- -'
+    }
+];
+
+export const dumyScroll: gIF.scroll_t = {
+    name: DUMMY_SCROLL,
+    yPos: 0
+}
+
+export const invalidBind: gIF.bind_t = {
+    valid: false,
+    partNum: 0,
+    extAddr: 0,
+    name: '- - -',
+    clusterID: 0,
+    shortAddr: 0,
+    endPoint: 0
+};
+
+export const invalidHostedBind: gIF.hostedBind_t = {
+    timestamp: 0,
+    name: '- - -',
+    partNum: 0,
+    hostShortAddr: 0,
+    extAddr: 0,
+    srcShortAddr: 0,
+    srcEP: 0,
+    clusterID: 0,
+    dstExtAddr: 0,
+    dstEP: 0
+};
+
+export const invalidStat = {
+    name: '- - -',
+    partNum: 0,
+    extAddr: 0,
+    setPoint: 0,
+    prevSetPoint: 0,
+    workPoint: 0,
+    hysteresis: 0,
+    shortAddr: 0,
+    endPoint: 0,
+    actuators: []
+}
+
 
 

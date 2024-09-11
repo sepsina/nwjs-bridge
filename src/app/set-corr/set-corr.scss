@@ -1,8 +1,13 @@
 :host {
     display: flex;
+    min-width: 250px;
     max-height: 80%;
     border-radius: 6px;
     background-color: white;
+}
+
+#all-dlg {
+    width: 100%;
 }
 
 .dlg-header {
@@ -30,10 +35,16 @@
     border-radius: 10px;
 }
 
-button {
-    font-size: 1.0rem;
+#delBtn {
+    width: 100%;
+  }
+
+.desc-label {
     color: gray;
-    padding: 4px 8px;
+}
+
+.desc-value {
+    padding-left: 0.4rem;
 }
 
 input[type="text"] {
@@ -44,10 +55,25 @@ input[type="text"] {
     border-bottom: 1px solid lightgrey;
 }
 
-input:invalid {
-    border: 1px solid red;
-    border-radius: 4px;
-    background-color: yellow;
+select {
+    height: 2rem;
+    width: 100%;
+    text-align: center;
+    font-size: 1rem;
+    border-radius: 6px;
+}
+
+button {
+    font-size: 1.0rem;
+    color: gray;
+    padding: 4px 8px;
+}
+
+input[type="number"] {
+    padding: 4px;
+    font-size: 1rem;
+    text-align: left;
+    width: 4rem;
 }
 
 label {
@@ -55,6 +81,3 @@ label {
     color: gray;
 }
 
-.name-field {
-    margin: 10px;
-}

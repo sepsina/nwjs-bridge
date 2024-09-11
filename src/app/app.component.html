@@ -1,81 +1,116 @@
-<div class="all-app" [inert]="modal.openFlag">
-    <div id="toolbar-frame">
+<!-- <div class="col-top-strech all-app" [inert]="modal.openFlag"> -->
+    <div class="row-left" id="toolbar-frame">
         <div id="app-title">
             bridge
         </div>
-        <div id="scrollSel">
-            <select id="scrollSel"
-                    #scrollSel
-                    (change)="scrollSelChange()">
-                <option *ngFor="let scroll of scrolls"
-                        value="{{scroll | json}}">
-                    {{scroll.name}}
-                </option>
+        <div>
+            <select
+                #scrollSel
+                (change)="scrollSelChange(scrollSel.value)">
+                @for(scroll of scrolls; track scroll.name; let i = $index){
+                    <option value="{{i}}">
+                        {{scroll.name}}
+                    </option>
+                }
             </select>
         </div>
     </div>
-    <div id="main-container">
-        <div id="side-bar">
-            <button class="btn">
+    <div class="row-left-stretch" id="main-container">
+        <div class="col-top-strech" id="side-bar">
+            <button class="btn" (click)="editScrolls()">
                 <i class="fa fa-caret-up"></i><i class="fa fa-caret-down"></i>
             </button>
-            <button class="btn">
+            <button class="btn" (click)="editBinds()">
                 <i class="fa fa-link"></i>
             </button>
-            <button class="btn">
+            <button class="btn" (click)="editThermostats()">
                 <i class="fa fa-thermometer-full"></i>
             </button>
-            <button class="btn" (click)="setStyles()">
+            <button class="btn" (click)="showLogs()">
                 <i class="fa fa-list-alt"></i>
             </button>
         </div>
         <div id="plan-container" #containerRef>
             <div id="floor-plan" #floorPlanRef resizeObserver (resize)="onResize($event)">
+                @for(keyVal of storage.attrMap | keyvalue; track keyVal){
+                    <div
+                        class="attr"
+                        [ngStyle]="getAttrStyle(keyVal)"
+                        cdkDrag
+                        [cdkDragBoundary]="floorPlanRef"
+                        (cdkDragEnded)="onDragEnded($event, keyVal)"
+                        (cdkDragStarted)="onDragStarted($event, keyVal)"
+                        [cdkDragFreeDragPosition]="getAttrPosition(keyVal)!"
+                        (mouseenter)="mouseEnterAttr(keyVal)"
+                        (mouseleave)="mouseLeaveAttr()"
+                        #dragRef="cdkDrag"
+                        [cdkContextMenuTriggerFor]="ctx_menu"
+                        (cdkContextMenuOpened)="ctxMenuOpened(keyVal, dragRef)">
+                        {{keyVal.value.formatedVal}}
+                    </div>
+                }
             </div>
         </div>
     </div>
-    <div class="footer">
+    <div class="row-right footer">
         {{footerStatus}}
     </div>
-    <div class="overlay" *ngIf="progressFlag">
-        <div class="center">
-            {{waitMsg}}
+    @if(loadFlag){
+        <div class="overlay">
+            <div class="center">
+                wait ...
+            </div>
         </div>
-    </div>
-</div>
+    }
+<!-- </div> -->
 
 <ng-template #ctx_menu>
     <div cdkMenu class="ctx-menu">
         <button cdkMenuItem
-                class="ctx-menu-item">
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="setName()">
             Name
         </button>
-        <button *ngIf="corrFlag"
+        @if(corrFlag) {
+            <button
                 cdkMenuItem
-                class="ctx-menu-item">
-            Correction
-        </button>
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="setCorr()">
+                Correction
+            </button>
+        }
         <button cdkMenuItem
-                class="ctx-menu-item">
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="setStyles()">
             Styles
         </button>
-        <button *ngIf="ctrlFlag"
+        @if(ctrlFlag){
+            <button
                 cdkMenuItem
-                class="ctx-menu-item">
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="showSSR()">
             On/Off
-        </button>
-        <button *ngIf="graphFlag"
+            </button>
+        }
+        @if(graphFlag){
+            <button
                 cdkMenuItem
-                class="ctx-menu-item">
-            Graph
-        </button>
-        <button *ngIf="moveFlag"
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="graph()">
+                Graph
+            </button>
+        }
+        @if(moveFlag){
+            <button
                 cdkMenuItem
-                class="ctx-menu-item">
-            Move
-        </button>
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="moveElement()">
+                Move
+            </button>
+        }
         <button cdkMenuItem
-                class="ctx-menu-item">
+                class="ctx-menu-item"
+                (cdkMenuItemTriggered)="showAbout()">
             About
         </button>
     </div>

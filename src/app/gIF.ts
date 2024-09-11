@@ -11,7 +11,16 @@ export enum eRxState {
 
 export enum eDlgType {
     E_ATTR_NAME,
-    E_ATTR_STYLE
+    E_ATTR_STYLE,
+    E_BINDS,
+    E_STATS,
+    E_SCROLLS,
+    E_LOGS,
+    E_MOVE,
+    E_UNITS,
+    E_SSR,
+    E_GRAPH,
+    E_ABOUT
 }
 
 export enum eDlgStyle{
@@ -72,6 +81,7 @@ export interface nsPos_t {
 export interface ngStyle_t {
     color: string;
     bgColor: string;
+    bgOpacity: number;
     fontSize: number;
     //border: string;
     borderWidth: number;

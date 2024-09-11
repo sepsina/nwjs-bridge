@@ -1,20 +1,23 @@
-#dlg-container {
-    min-width: 200px;
+:host {
     display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: stretch;
-    overflow: auto;
+    max-height: 90%;
+    border-radius: 6px;
+    background-color: white;
 }
 
-#dlg-head {
+.dlg-header {
     background: #e8e8e8;
     padding: 6px;
 }
 
+#dlg-body {
+    padding: 0 10px;
+    overflow: auto;
+}
+
 label {
-    padding-right: 0.5rem;
     white-space: nowrap;
+    color: gray;
 }
 
 button {
@@ -26,20 +29,13 @@ input[type="number"] {
     padding: 4px;
     font-size: 1rem;
     text-align: center;
-    width: 4rem;
+    width: 3rem;
 }
 
 input[type="color"] {
     padding: 2px;
     width: 3rem;
     height: 2rem;
-    margin-right: 10px;
-}
-
-input[type="checkbox"] {
-    width: 1.1rem;
-    height: 1.1rem;
-    margin-right: 4px;
 }
 
 input[type="text"] {
@@ -56,11 +52,12 @@ input[type="text"]:invalid {
 
 select {
     height: 2rem;
-    width: 6rem;
+    width: 100%;
     font-size: 1rem;
+    outline: none;
 }
 
-#edit-title {
+.dlg-title {
     width: 100%;
     padding-left: 6px;
     user-select: none;
@@ -71,47 +68,20 @@ select {
 
 #testCont {
     padding: 10px;
-    border: solid 1px lightgray;
+    border-top: solid 1px lightgray;
+    border-bottom: solid 1px lightgray;
 }
 
 .cards-common {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: stretch;
     padding: 10px;
-}
-
-#styles-card {
-    overflow: auto;
-}
-
-#borders-card {
     border: solid 1px lightgray;
     border-radius: 10px;
-    margin-top: 10px;
 }
 
-#paddings-card {
-    border: solid 1px lightgray;
-    border-radius: 10px;
-    margin-top: 10px;
-}
-
-.set-actions {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    padding: 10px;
-    background: #e8e8e8;
-}
-
-.style-field {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    margin: 10px;
+#padd-rect {
+    width: 4rem;
+    height: 3rem;
+    border: 1px solid gray;
 }
 
 #saveBtn {

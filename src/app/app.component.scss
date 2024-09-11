@@ -1,53 +1,39 @@
-.all-app {
+:host {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
     height: 100%;
+    //border: 1px solid red;
 }
-
+/*
+.all-app {
+    flex: 1 1 100%;
+    gap: 0px;
+    border: 1px solid red;
+}
+*/
 #toolbar-frame {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
     border: 1px solid lightgray;
-    gap: 10px;
     background-color: white;
-    padding: 5px;
+    padding: 6px;
 }
 
 #app-title {
-    flex: 1 1 100%;
+    width: 100%;
     text-align: left;
 }
 
-#scrollSel {
-    border: 1px solid lightgray;
-    border-radius: 3px;
-    padding: 4px;
-}
-
 #main-container {
-    //border: 2px solid green;
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-items: stretch;
+    //flex: 1 1 100%;
     overflow: hidden;
+    gap: 0;
 }
 
 #side-bar {
-    height: 100%;
     border-right: 2px solid lightgray;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-items: stretch;
     overflow: auto;
     padding: 5px;
-    gap: 10px;
 }
 
 .side-button {
@@ -63,10 +49,8 @@
 #plan-container {
     flex: 1 1 auto;
     display: flex;
-    height: 100%;
     overflow: auto;
     padding-right: 1px;
-    //border: 2px solid rgb(3, 111, 253);
 }
 
 #floor-plan {
@@ -88,16 +72,10 @@
   }
 
 .footer {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    align-items: center;
     border: 1px solid lightgray;
-    gap: 10px;
     background-color: white;
     padding: 5px;
     padding-right: 10px;
-    //z-index: 100;
     min-height: 30px;
     font-size: 14px;
 }
@@ -114,14 +92,13 @@
 }
 
 .overlay {
-    position:   fixed;
+    position: fixed;
+    top: 0;
+    left: 0;
     height:100vh;
     width:100%;
     background-color:rgba(0, 0, 0, 0.286);
-    z-index:    10;
-    top:        0;
-    left:       0;
-
+    z-index: 10;
 }
 
 .ctx-menu {
@@ -131,20 +108,17 @@
     border: solid 1px rgb(220, 220, 220);
 }
 .ctx-menu-item {
+    min-width: 64px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border: none;
     background-color: transparent;
     cursor: pointer;
-    border: none;
-
     user-select: none;
-    min-width: 64px;
-    line-height: 36px;
-    padding: 0 16px;
-
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    flex: 1;
+    padding: 10px 16px;
 }
+
 .ctx-menu-item:focus {
     outline: 0px solid transparent;
   }
@@ -153,16 +127,6 @@
 }
 .ctx-menu-item:active {
     background-color: rgb(170, 170, 170);
-}
-/*
-.mat-mdc-button:has(.mat-icon) {
-    padding: 10px;
-}
-*/
-.mat-mdc-button > .mat-icon {
-    font-size: 32px;
-    height: 32px;
-    width: 32px;
 }
 
 .btn {
@@ -173,12 +137,20 @@
     color: black;
     padding: 6px;
     font-size: 1.5rem;
-    cursor: pointer;
+    //cursor: pointer;
 }
 
-  /* Darker background on mouse-over */
 .btn:hover {
     background-color: lightblue;
+}
+
+select {
+    height: 2rem;
+    min-width: 120px;
+    text-align: center;
+    font-size: 1rem;
+    border-radius: 6px;
+    outline: none;
 }
 
 

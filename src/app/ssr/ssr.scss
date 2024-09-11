@@ -6,6 +6,7 @@
 }
 
 .dlg-header {
+    min-height: 40px;
     background: #e8e8e8;
     padding: 6px;
 }
@@ -36,25 +37,3 @@ button {
     padding: 4px 8px;
 }
 
-input[type="text"] {
-    padding: 4px;
-    font-size: 1rem;
-    outline: none;
-    border: none;
-    border-bottom: 1px solid lightgrey;
-}
-
-input:invalid {
-    border: 1px solid red;
-    border-radius: 4px;
-    background-color: yellow;
-}
-
-label {
-    white-space: nowrap;
-    color: gray;
-}
-
-.name-field {
-    margin: 10px;
-}
