@@ -23,8 +23,8 @@ import { StorageService } from './services/storage.service';
 import { EventsService } from './services/events.service';
 import { SerialLinkService } from './services/serial-link.service';
 import { UtilsService } from './services/utils.service';
-import { UdpService } from './services/udp.service';
-import { SerialPortService } from './services/serial-port.service';
+//import { UdpService } from './services/udp.service';
+//import { SerialPortService } from './services/serial-port.service';
 // test
 import { TestService } from './services/test.service';
 // test
@@ -87,8 +87,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         private httpClient: HttpClient,
         private utils: UtilsService,
         public serialLink: SerialLinkService,
-        public udp: UdpService,
-        public serial: SerialPortService,
+        //public udp: UdpService,
+        //public serial: SerialPortService,
         public testService: TestService
     ) {
         // ---
@@ -156,8 +156,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     @HostListener('window:beforeunload')
     closeComms(){
-        this.udp.closeSocket();
-        this.serial.closeComPort();
+        //this.udp.closeSocket();
+        //this.serial.closeComPort();
     };
 
     /***********************************************************************************************

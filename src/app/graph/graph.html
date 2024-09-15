@@ -14,14 +14,7 @@
     <div class="col-top-strech" id="dlg-body">
         <div class="col-top-strech cards-common">
             <div class="col-top" id="lineChart">
-                <canvas
-                    baseChart
-                    [type]="'line'"
-                    [data]="lineChartData"
-                    [options]="lineChartOptions"
-                    [legend]="lineChartLegend"
-                    (chartClick)="onChartClick($event)">
-                </canvas>
+                <canvas id="canvas">{{chart}}</canvas>
             </div>
             <div id="x-axe">
                 <div>
