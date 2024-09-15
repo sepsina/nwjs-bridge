@@ -14,76 +14,6 @@ body {
   overflow: hidden;
 }
 
-.attr-tooltip {
-  white-space: pre;
-  font-size: 15px;
-  color: black !important;
-  background-color: lightgray;
-  user-select: none;
-}
-
-.bind-tooltip {
-  white-space: pre;
-  font-size: 15px;
-  color: black !important;
-  background-color: lightgray;
-  user-select: none;
-}
-
-.set-styles-container .mat-dialog-container {
-  padding: 0;
-}
-
-.edit-scrolls-container .mat-dialog-container {
-  padding: 0;
-}
-
-.move-element-container .mat-dialog-container {
-    padding: 0;
-}
-
-.set-dns-container .mat-dialog-container {
-  padding: 0;
-}
-
-.edit-binds-container .mat-dialog-container {
-  padding: 0;
-  resize: horizontal;
-  min-width: 350px;
-}
-
-.edit-thermostats-container .mat-dialog-container {
-    padding: 0;
-    resize: horizontal;
-    min-width: 600px;
-}
-
-.show-logs-container .mat-dialog-container {
-    //resize: horizontal;
-    padding: 0;
-}
-
-.show-about-container .mat-dialog-container {
-    padding: 0;
-}
-
-.show-ssr-container .mat-dialog-container {
-    padding: 0;
-}
-
-.set-name-container .mat-dialog-container {
-    padding: 0;
-}
-
-.set-corr-container .mat-dialog-container {
-    padding: 0;
-}
-
-.graph-container .mat-dialog-container {
-    //resize: horizontal;
-    padding: 0;
-}
-
 .center-center {
   display: flex;
   flex-direction: row;
@@ -205,14 +135,6 @@ body {
 
 ::-webkit-scrollbar-track {
     background-color: transparent;
-}
-
-.mat-select-trigger {
-    min-width: 100px;
-}
-.mat-select-value {
-    text-align: right;
-    padding-right: 5px;
 }
 
 input::-webkit-outer-spin-button,

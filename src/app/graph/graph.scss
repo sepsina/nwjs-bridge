@@ -1,13 +1,14 @@
 :host {
     display: flex;
-    min-width: 80%;
-    max-height: 80%;
+    min-width: 60%;
+    max-height: 90%;
     border-radius: 6px;
     background-color: white;
 }
 
 #all-dlg {
-    width: 100%;
+    flex: 1 1 auto;
+    //width: 100%;
 }
 
 .dlg-header {

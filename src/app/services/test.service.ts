@@ -1,4 +1,5 @@
-﻿import { Injectable, NgZone } from '@angular/core';
+﻿///<reference types="chrome"/>
+import { Injectable, NgZone } from '@angular/core';
 import { EventsService } from './events.service';
 
 import * as gIF from '../gIF';
@@ -18,14 +19,20 @@ export class TestService {
 
     allBinds: gIF.clusterBind_t[] = [];
 
+    rxBuf = new Uint8Array(1024);
+    txBuf = new Uint8Array(1024);
+    rwBuf = new gIF.rwBuf_t();
+
     constructor(
         private events: EventsService,
         private ngZone: NgZone
     ) {
+        this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
+
         this.t_1_set.hostShortAddr = 2300;
         this.t_1_set.partNum = gConst.SHT40_018_T;
         this.t_1_set.clusterServer = 0;
-        this.t_1_set.extAddr = 1100
+        this.t_1_set.extAddr = 1100;
         this.t_1_set.shortAddr = 101;
         this.t_1_set.endPoint = 2;
         this.t_1_set.clusterID = gConst.CLUSTER_ID_MS_TEMPERATURE_MEASUREMENT;
@@ -61,7 +68,7 @@ export class TestService {
         this.light_2_set.hostShortAddr = 2400;
         this.light_2_set.partNum = gConst.SSR_009_RELAY;
         this.light_2_set.clusterServer = 1;
-        this.light_2_set.extAddr = 1400
+        this.light_2_set.extAddr = 1400;
         this.light_2_set.shortAddr = 104;
         this.light_2_set.endPoint = 1;
         this.light_2_set.clusterID = gConst.CLUSTER_ID_GEN_ON_OFF;
@@ -90,22 +97,22 @@ export class TestService {
 
         setTimeout(()=>{
             this.t_1_send();
-        }, 50);
+        }, 1000);
         setTimeout(()=>{
             this.t_2_send();
-        }, 100);
+        }, 1050);
         setTimeout(()=>{
             this.light_1_send();
-        }, 150);
+        }, 1100);
         setTimeout(()=>{
             this.light_2_send();
-        }, 200);
+        }, 1150);
         setTimeout(()=>{
             this.bind_1_send();
-        }, 250);
+        }, 1200);
         setTimeout(()=>{
             this.bind_2_send();
-        }, 300);
+        }, 1250);
 
         this.events.subscribe('wr_bind', (srcBind: gIF.hostedBind_t)=>{
             if(srcBind.extAddr == this.bind_1.extAddr){
@@ -125,8 +132,25 @@ export class TestService {
                 }
             }
         });
+        /*
+        setTimeout(()=>{
+            this.nwk_test();
+        }, 1000);
+        */
     }
 
+    /***********************************************************************************************
+     * fn          nwk_test
+     *
+     * brief
+     *
+     *
+    nwk_test() {
+        chrome.socket.getNetworkList((nwkList)=>{
+            console.log(nwkList);
+        });
+    }
+    */
     /***********************************************************************************************
      * fn          t_1_send
      *
@@ -134,9 +158,16 @@ export class TestService {
      *
      */
     private t_1_send() {
+
+        this.rwBuf.wrIdx = 0;
+
         const ranVal = Math.ceil(Math.random() * 30) * (Math.round(Math.random()) ? 1 : -1);
         const new_t = 200 + ranVal;
-        this.t_1_set.attrVals[0] = new_t;
+        this.rwBuf.write_int16_LE(new_t);
+
+        for(let i = 0; i < this.rwBuf.wrIdx; i++){
+            this.t_1_set.attrVals[i] = this.txBuf[i];
+        }
         this.events.publish('attr_set', this.t_1_set);
         const tmo = 3000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
@@ -150,9 +181,16 @@ export class TestService {
      *
      */
     private t_2_send() {
+
+        this.rwBuf.wrIdx = 0;
+
         const ranVal = Math.ceil(Math.random() * 20) * (Math.round(Math.random()) ? 1 : -1);
         const new_t = 200 + ranVal;
-        this.t_2_set.attrVals[0] = new_t;
+        this.rwBuf.write_int16_LE(new_t);
+
+        for(let i = 0; i < this.rwBuf.wrIdx; i++){
+            this.t_2_set.attrVals[i] = this.txBuf[i];
+        }
         this.events.publish('attr_set', this.t_2_set);
         const tmo = 3000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
@@ -167,8 +205,15 @@ export class TestService {
      *
      */
     private light_1_send() {
+
+        this.rwBuf.wrIdx = 0;
+
         const ranVal = Math.round(Math.random()) ? 1 : 0;
-        this.light_1_set.attrVals[0] = ranVal;
+        this.rwBuf.write_uint8(ranVal);
+
+        for(let i = 0; i < this.rwBuf.wrIdx; i++){
+            this.light_1_set.attrVals[i] = this.txBuf[i];
+        }
         this.events.publish('attr_set', this.light_1_set);
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
@@ -183,8 +228,15 @@ export class TestService {
      *
      */
     private light_2_send() {
+
+        this.rwBuf.wrIdx = 0;
+
         const ranVal = Math.round(Math.random()) ? 1 : 0;
-        this.light_2_set.attrVals[0] = ranVal;
+        this.rwBuf.write_uint8(ranVal);
+
+        for(let i = 0; i < this.rwBuf.wrIdx; i++){
+            this.light_2_set.attrVals[i] = this.txBuf[i];
+        }
         this.events.publish('attr_set', this.light_2_set);
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
@@ -199,7 +251,9 @@ export class TestService {
      *
      */
     private bind_1_send() {
+
         this.events.publish('cluster_bind', this.bind_1);
+
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.bind_1_send();
@@ -213,7 +267,9 @@ export class TestService {
      *
      */
     private bind_2_send() {
+
         this.events.publish('cluster_bind', this.bind_2);
+
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.bind_2_send();

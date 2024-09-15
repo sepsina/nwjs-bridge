@@ -11,6 +11,10 @@ import * as gIF from '../gIF';
 })
 export class SerialLinkService  {
 
+    rxBuf = new Uint8Array(1024);
+    txBuf = new Uint8Array(1024);
+    rwBuf = new gIF.rwBuf_t();
+
     constructor(
         private events: EventsService,
         private storage: StorageService,
@@ -18,7 +22,7 @@ export class SerialLinkService  {
         private globs: Globals,
         private ngZone: NgZone
     ) {
-        // ---
+        this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
     }
 
     /***********************************************************************************************
@@ -301,12 +305,11 @@ export class SerialLinkService  {
     private getAttrSpec(attrSet: gIF.attrSet_t): gIF.attrSpec_t[] {
 
         let attrSpecs: gIF.attrSpec_t[] = [];
-        let valsBuff = new ArrayBuffer(64);
-        let valsData = new Uint8Array(valsBuff);
-        for(let i = 0; i < attrSet.valsLen; i++) {
-            valsData[i] = attrSet.attrVals[i];
-        }
-        let valsView = new DataView(valsBuff);
+
+        const attr_vals = new Uint8Array(attrSet.attrVals);
+        this.rwBuf.rdBuf = new DataView(attr_vals.buffer);
+        this.rwBuf.rdIdx = 0;
+
         let now = Math.round(Date.now() / 1000);
         let setVals = {} as any;
         let key: string;
@@ -316,15 +319,12 @@ export class SerialLinkService  {
         let attrID: number;
         let attrName = '';
         let units: number;
-        let idx: number;
 
         switch(attrSet.partNum) {
             case gConst.SI7021_027_RH:
             case gConst.SHT40_018_RH:
             case gConst.HTU21D_005_RH: {
-                idx = 0;
-                let rh = valsView.getUint16(idx, gConst.LE);
-                idx += 2;
+                let rh = this.rwBuf.read_uint16_LE();
                 rh /= 10.0;
                 let corrRH = rh;
                 attrID = 0;
@@ -355,9 +355,7 @@ export class SerialLinkService  {
             case gConst.SI7021_027_T:
             case gConst.HTU21D_005_T:
             case gConst.SHT40_018_T: {
-                idx = 0;
-                let temp = valsView.getInt16(idx, gConst.LE);
-                idx += 2;
+                let temp = this.rwBuf.read_int16_LE();
                 temp /= 10.0;
                 let corrTemp = temp;
                 attrID = 0;
@@ -405,9 +403,7 @@ export class SerialLinkService  {
                 break;
             }
             case gConst.SH_006_SH: {
-                idx = 0;
-                let sh = valsView.getUint16(idx, gConst.LE);
-                idx += 2;
+                let sh = this.rwBuf.read_uint16_LE();
                 attrID = 0;
                 key = this.getKey(attrSet, attrID);
                 nvAttr = this.storage.nvAttrMap.get(key);
@@ -433,8 +429,7 @@ export class SerialLinkService  {
                 break;
             }
             case gConst.SSR_009_RELAY: {
-                idx = 0;
-                let state = valsView.getUint8(idx++);
+                let state = this.rwBuf.read_uint8();
                 attrID = 0;
                 key = this.getKey(attrSet, attrID);
                 nvAttr = this.storage.nvAttrMap.get(key);
@@ -461,9 +456,7 @@ export class SerialLinkService  {
                 break;
             }
             case gConst.ENS_015_AQ: {
-                idx = 0;
-                let aq = valsView.getUint16(idx, gConst.LE);
-                idx += 2;
+                let aq = this.rwBuf.read_uint16_LE();
                 attrID = 0;
                 key = this.getKey(attrSet, attrID);
                 nvAttr = this.storage.nvAttrMap.get(key);
@@ -489,9 +482,8 @@ export class SerialLinkService  {
                 break;
             }
             case gConst.ACUATOR_010_ON_OFF: {
-                idx = 0;
-                let state = valsView.getUint8(idx++);
-                let level = valsView.getUint8(idx++);
+                let state = this.rwBuf.read_uint8();
+                let level = this.rwBuf.read_uint8();
                 attrID = 0;
                 key = this.getKey(attrSet, attrID);
                 nvAttr = this.storage.nvAttrMap.get(key);
@@ -529,8 +521,7 @@ export class SerialLinkService  {
             case gConst.PB_SW_023_BAT:
             case gConst.TGL_SW_011_BAT:
             case gConst.RKR_SW_012_BAT: {
-                idx = 0;
-                let batVolt = valsView.getUint8(idx++);
+                let batVolt = this.rwBuf.read_uint8();
                 batVolt /= 10.0;
                 attrID = 0;
                 key = this.getKey(attrSet, attrID);

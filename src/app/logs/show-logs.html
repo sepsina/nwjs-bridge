@@ -5,7 +5,7 @@
 
     <div class='row-right-stretch dlg-header'>
         <div class="row-left dlg-title" cdkDragHandle>
-            scrolls
+            logs
         </div>
         <button (click)="close()">
             <i class="fa fa-times"></i>
@@ -15,10 +15,11 @@
         <div class="col-top-strech cards-common">
             <div class="row-right">
                 <label>autoscroll:</label>
-                <input #cbScroll
-                        id="cbScroll"
-                        type="checkbox"
-                        (click)="autoScrollChange()">
+                <input
+                    #cbScroll
+                    id="cbScroll"
+                    type="checkbox"
+                    (click)="autoScrollChange()">
             </div>
             <!-- @for(msg of utils.msgLogs; track msg){
                 <div [style.color]="msg.color">

@@ -4,28 +4,21 @@
     justify-content: flex-start;
     align-items: stretch;
     height: 100%;
-    //border: 1px solid red;
 }
-/*
-.all-app {
-    flex: 1 1 100%;
-    gap: 0px;
-    border: 1px solid red;
-}
-*/
+
 #toolbar-frame {
     border: 1px solid lightgray;
-    background-color: white;
+    background-color: lightgray;
     padding: 6px;
 }
 
 #app-title {
     width: 100%;
     text-align: left;
+    color: gray;
 }
 
 #main-container {
-    //flex: 1 1 100%;
     overflow: hidden;
     gap: 0;
 }
@@ -60,24 +53,26 @@
 }
 
 .attr {
-    position: absolute; // very important
+    position: absolute;
     white-space: nowrap;
     user-select: none;
 }
 
-.attr:hover {
-    background-color: yellow !important;
-    //border: 2px solid red !important;
-    cursor: move;
-  }
-
 .footer {
     border: 1px solid lightgray;
-    background-color: white;
+    background-color: lightgray;
     padding: 5px;
     padding-right: 10px;
-    min-height: 30px;
+    min-height: 40px;
     font-size: 14px;
+}
+
+#drag-flag {
+    gap: 6px;
+}
+
+#footStat {
+    flex: 1 1 100%;
 }
 
 .center {
@@ -102,31 +97,34 @@
 }
 
 .ctx-menu {
-    display: inline-flex;
+    display: flex;
     flex-direction: column;
     background-color: rgb(255, 255, 255);
     border: solid 1px rgb(220, 220, 220);
 }
+
 .ctx-menu-item {
     min-width: 64px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
     border: none;
-    background-color: transparent;
-    cursor: pointer;
+    outline: none;
     user-select: none;
     padding: 10px 16px;
+    background-color: transparent;
+    cursor: pointer;
 }
 
-.ctx-menu-item:focus {
-    outline: 0px solid transparent;
-  }
+.ctx-menu-item-disabled {
+    min-width: 64px;
+    border: none;
+    outline: none;
+    user-select: none;
+    padding: 10px 16px;
+    background-color: lightblue;
+    cursor: default;
+}
+
 .ctx-menu-item:hover {
     background-color: rgb(208, 208, 208);
-}
-.ctx-menu-item:active {
-    background-color: rgb(170, 170, 170);
 }
 
 .btn {
@@ -153,6 +151,19 @@ select {
     outline: none;
 }
 
+label {
+    white-space: nowrap;
+    //color: gray;
+}
+
+input[type="checkbox"] {
+    transform: scale(1.5);
+    accent-color: gray;
+}
+
+input[type="checkbox"]:not(:checked) {
+    opacity:0.7;
+}
 
 
 

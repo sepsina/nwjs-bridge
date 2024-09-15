@@ -1,25 +1,22 @@
-import { Directive, ElementRef, HostListener, AfterViewInit} from '@angular/core';
-//import { EventsService } from '../events.service';
-import { SerialLinkService } from '../services/serial-link.service';
-//import * as gConst from '../gConst';
-//import * as gIF from '../gIF'
+import {
+    Directive,
+    ElementRef,
+    HostListener
+} from '@angular/core';
 
 @Directive({
     selector: '[highlightSel]',
     standalone: true
 })
-export class HighlightSel implements AfterViewInit{
+export class HighlightSel {
+
     bgColor = '';
     color = '';
 
-    constructor(public elRef: ElementRef,
-                public selialLink: SerialLinkService) {
-
-    }
-
-    ngAfterViewInit(): void {
-        this.bgColor = this.elRef.nativeElement.style.backgroundColor;
-        this.color = this.elRef.nativeElement.style.color;
+    constructor(
+        public elRef: ElementRef
+    ){
+        // ---
     }
 
     @HostListener('mouseenter') onMouseEnter() {
@@ -28,8 +25,6 @@ export class HighlightSel implements AfterViewInit{
 
         this.elRef.nativeElement.style.backgroundColor = 'yellow';
         this.elRef.nativeElement.style.color = 'black';
-
-        //this.selialLink.selElementRef = this.elRef;
     }
 
     @HostListener('mouseleave') onMouseLeave() {

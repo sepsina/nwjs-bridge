@@ -18,8 +18,6 @@ import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
 import * as gConst from '../gConst';
 import * as gIF from '../gIF'
 
-
-
 @Component({
     selector: 'app-binds',
     standalone: true,

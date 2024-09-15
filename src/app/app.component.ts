@@ -4,8 +4,8 @@ import {
     ElementRef,
     OnInit,
     ViewChild,
-    NgZone,
-    OnDestroy
+    OnDestroy,
+    HostListener
 } from '@angular/core';
 import { DragDropModule } from "@angular/cdk/drag-drop";
 import { CdkDrag, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
@@ -17,13 +17,14 @@ import {
     CdkContextMenuTrigger,
 } from '@angular/cdk/menu';
 import { CommonModule } from '@angular/common';
-//import { FormsModule } from '@angular/forms';
 
 import { ModalService } from './services/modal.service';
 import { StorageService } from './services/storage.service';
 import { EventsService } from './services/events.service';
 import { SerialLinkService } from './services/serial-link.service';
 import { UtilsService } from './services/utils.service';
+import { UdpService } from './services/udp.service';
+import { SerialPortService } from './services/serial-port.service';
 // test
 import { TestService } from './services/test.service';
 // test
@@ -31,15 +32,11 @@ import { TestService } from './services/test.service';
 import * as gConst from './gConst';
 import * as gIF from './gIF';
 
-
-const wait_msg = '--------';
-
 @Component({
     selector: 'app-root',
     standalone: true,
     imports: [
         CommonModule,
-        //FormsModule,
         DragDropModule,
         CdkContextMenuTrigger,
         CdkMenu,
@@ -54,9 +51,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('containerRef') containerRef!: ElementRef;
     @ViewChild('floorPlanRef') floorPlanRef!: ElementRef;
     @ViewChild('scrollSel') scrollSelRef!: ElementRef;
+    @ViewChild('cbDrag') cbDragRef!: ElementRef;
 
     @ViewChild(CdkContextMenuTrigger) ctxMenu!: CdkContextMenuTrigger;
-
 
     bkgImgWidth = 0;
     bkgImgHeight = 0;
@@ -71,6 +68,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     partMap = new Map();
 
     loadFlag = false;
+    dragFlag = false;
 
     dragRef!: CdkDrag;
     selAttr = {} as gIF.keyVal_t;
@@ -78,7 +76,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     ctrlFlag = false;
     graphFlag = false;
     corrFlag = false;
-    moveFlag = false;
 
     footerTmo: any;
     footerStatus = '';
@@ -89,8 +86,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         public modal: ModalService,
         private httpClient: HttpClient,
         private utils: UtilsService,
-        private ngZone: NgZone,
         public serialLink: SerialLinkService,
+        public udp: UdpService,
+        public serial: SerialPortService,
         public testService: TestService
     ) {
         // ---
@@ -103,6 +101,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     ngAfterViewInit() {
+
+        try {
+            window.resizeTo(window.screen.availWidth, window.screen.availHeight);
+            window.resizeBy(-100, -100);
+            window.moveTo(50, 50);
+        } catch(e) {
+            console.log(e);
+        }
+
         setTimeout(() => {
             this.init();
         }, 10);
@@ -116,24 +123,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     ngOnInit() {
 
-        window.onbeforeunload = async ()=>{
-            // ---
-        };
+        this.events.subscribe('temp_event', (event: gIF.tempEvent_t)=>{
+            this.tempEvent(event);
+        });
 
         this.events.subscribe('scrollDlgEvt', (newScrolls: gIF.scroll_t[])=>{
             this.scrolls = newScrolls;
             this.scrolls.unshift(gConst.dumyScroll);
             this.storage.setScrolls(this.scrolls);
-            //this.selScroll = this.scrolls[0];
         });
-
-        try {
-            window.resizeTo(window.screen.availWidth, window.screen.availHeight);
-            window.resizeBy(-100, -100);
-            window.moveTo(50, 50);
-        } catch(e) {
-            console.log(e);
-        }
 
         setTimeout(() => {
             this.serialLink.initApp();
@@ -151,17 +149,25 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /***********************************************************************************************
+     * fn          closeComms
+     *
+     * brief
+     *
+     */
+    @HostListener('window:beforeunload')
+    closeComms(){
+        this.udp.closeSocket();
+        this.serial.closeComPort();
+    };
+
+    /***********************************************************************************************
      * fn          init
      *
      * brief
      *
      */
     init() {
-        /*
-        setTimeout(() => {
-            (<any>window).resizeTo(screen.availWidth, screen.availHeight);
-        }, 1000);
-        */
+
         const partsURL = '/assets/parts.json';
 
         this.httpClient.get(partsURL).subscribe({
@@ -177,7 +183,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                     part.url = desc.url;
                     this.partMap.set(desc.partNum, part);
                 }
-                //console.log(JSON.stringify(this.partDesc));
             },
             error: (err: HttpErrorResponse)=>{
                 console.log(err.message);
@@ -259,7 +264,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if(attr.drag){
             return undefined;
         }
-
         return {
             x: attr.pos.x * this.imgDim.width,
             y: attr.pos.y * this.imgDim.height,
@@ -275,11 +279,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     onDragEnded(event: CdkDragEnd, keyVal: gIF.keyVal_t) {
 
         const attr = keyVal.value;
+        const cdkDrag = event.source;
+        const elRef = event.source.element;
 
         attr.drag = false;
-        event.source.element.nativeElement.style.zIndex = '1';
+        elRef.nativeElement.style.zIndex = '1';
 
-        const evtPos = event.source.getFreeDragPosition();
+        const evtPos = cdkDrag.getFreeDragPosition();
         let pos: gIF.nsPos_t = {
             x: evtPos.x / this.imgDim.width,
             y: evtPos.y / this.imgDim.height,
@@ -298,9 +304,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     onDragStarted(event: CdkDragStart, keyVal: gIF.keyVal_t) {
 
         const attr = keyVal.value;
+        const elRef = event.source.element;
 
         attr.drag = true;
-        event.source.element.nativeElement.style.zIndex = '10000';
+        elRef.nativeElement.style.zIndex = '10000';
     }
 
     /***********************************************************************************************
@@ -376,25 +383,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             imgDim: this.imgDim,
         }
         this.modal.dlgType = gIF.eDlgType.E_SCROLLS;
-        this.modal.openDlg();
-    }
-
-    /***********************************************************************************************
-     * @fn          moveElement
-     *
-     * @brief
-     *
-     */
-    moveElement() {
-
-        this.modal.dlgData = {
-            scrolls: JSON.stringify(this.scrolls),
-            containerRef: this.containerRef.nativeElement,
-            imgDim: this.imgDim,
-            selAttr: this.selAttr,
-            dragRef: this.dragRef
-        }
-        this.modal.dlgType = gIF.eDlgType.E_MOVE;
         this.modal.openDlg();
     }
 
@@ -506,9 +494,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.imgDim.width = rect.width;
         this.imgDim.height = Math.round((rect.width / this.bkgImgWidth) * this.bkgImgHeight);
-        this.ngZone.run(()=>{
-            this.floorPlanRef.nativeElement.style.height = `${this.imgDim.height}px`
-        });
+
+        this.floorPlanRef.nativeElement.style.height = `${this.imgDim.height}px`
     }
 
     /***********************************************************************************************
@@ -517,11 +504,21 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * brief
      *
      */
-    mouseEnterAttr(keyVal: gIF.keyVal_t){
+    mouseEnterAttr(keyVal: gIF.keyVal_t, dragRef: CdkDrag){
 
         const attr = keyVal.value;
+        const htmlEl = dragRef.element.nativeElement;
         const partDesc: gIF.part_t = this.partMap.get(attr.partNum);
 
+        htmlEl.style.backgroundColor = 'yellow';
+        if(this.dragFlag){
+            dragRef.disabled = false;
+            htmlEl.style.cursor = 'move';
+        }
+        else {
+            dragRef.disabled = true;
+            htmlEl.style.cursor = 'pointer';
+        }
         this.footerStatus  = `${attr.name}: `;
         this.footerStatus += `${partDesc.part}`;
         this.footerStatus += ` -> ${partDesc.devName}`;
@@ -530,7 +527,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.footerTmo = setTimeout(()=>{
             this.footerStatus = '';
         }, 5000);
-
     }
 
     /***********************************************************************************************
@@ -539,8 +535,28 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * brief
      *
      */
-    mouseLeaveAttr(){
+    mouseLeaveAttr(keyVal: gIF.keyVal_t, attrRef: HTMLDivElement){
+
         this.footerStatus = '';
+
+        attrRef.style.backgroundColor = keyVal.value.style.bgColor;
+        attrRef.style.cursor = 'default';
+    }
+
+    /***********************************************************************************************
+     * fn          dragChanged
+     *
+     * brief
+     *
+     */
+    dragChanged(){
+
+        if(this.cbDragRef.nativeElement.checked) {
+            this.dragFlag = true;
+        }
+        else {
+            this.dragFlag = false;
+        }
     }
 
     /***********************************************************************************************
@@ -577,9 +593,86 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if(attr.attrVals.length > 1){
             this.graphFlag = true;
         }
-        this.moveFlag = false;
-        if(this.scrolls.length > 2){
-            this.moveFlag = true;
+    }
+
+    /***********************************************************************************************
+     * fn          moveTo
+     *
+     * brief
+     *
+     */
+    moveTo(idx: number){
+
+        const x = 0;
+        const y = (this.scrolls[idx].yPos * this.imgDim.height) / 100;
+
+        this.containerRef.nativeElement.scrollTo({
+            top: y,
+            left: x,
+            behavior: 'smooth'
+        });
+        let pos: gIF.nsPos_t = {
+            x: x / this.imgDim.width,
+            y: y / this.imgDim.height,
+        };
+        this.selAttr.value.pos = pos;
+        this.storage.setAttrPos(pos, this.selAttr);
+    }
+
+    /***********************************************************************************************
+     * fn          tempEvent
+     *
+     * brief
+     *
+     */
+    tempEvent(event: gIF.tempEvent_t){
+
+        const key = this.storage.thermostatKey(event.extAddr, event.endPoint);
+        const nvThermostat: gIF.thermostat_t = this.storage.nvThermostatsMap.get(key);
+        if(nvThermostat){
+            if(nvThermostat.actuators.length){
+                let changed = false;
+                if(nvThermostat.setPoint !== nvThermostat.prevSetPoint){
+                    changed = true;
+                    nvThermostat.prevSetPoint = nvThermostat.setPoint;
+                    nvThermostat.workPoint = nvThermostat.setPoint - nvThermostat.hysteresis;
+                }
+                if(event.temp > nvThermostat.workPoint){
+                    if(nvThermostat.workPoint > nvThermostat.setPoint){
+                        changed = true;
+                        nvThermostat.workPoint = nvThermostat.setPoint - nvThermostat.hysteresis;
+                    }
+                }
+                if(event.temp < nvThermostat.workPoint){
+                    if(nvThermostat.workPoint < nvThermostat.setPoint){
+                        changed = true;
+                        nvThermostat.workPoint = nvThermostat.setPoint + nvThermostat.hysteresis;
+                    }
+                }
+                if(changed){
+                    this.storage.storeThermostat(nvThermostat);
+                }
+
+                let cmd = 0x00; // OFF
+                if(event.temp < nvThermostat.workPoint){
+                    cmd = 0x01; // ON
+                }
+                for(const on_off of nvThermostat.actuators){
+                    const zclCmd = {} as gIF.udpZclReq_t;
+                    zclCmd.ip = '';  // not used
+                    zclCmd.port = 0; // not used
+                    zclCmd.extAddr = on_off.extAddr;
+                    zclCmd.endPoint = on_off.endPoint;
+                    zclCmd.clusterID = gConst.CLUSTER_ID_GEN_ON_OFF;
+                    zclCmd.hasRsp = 0;
+                    zclCmd.cmdLen = 3;
+                    zclCmd.cmd = [];
+                    zclCmd.cmd[0] = 0x11; // cluster spec cmd, not manu spec, client to srv dir, disable dflt rsp
+                    zclCmd.cmd[1] = 0x00; // seq num -> not used
+                    zclCmd.cmd[2] = cmd;  // ON/OFF command
+                    this.events.publish('zcl_cmd', zclCmd);
+                }
+            }
         }
     }
 

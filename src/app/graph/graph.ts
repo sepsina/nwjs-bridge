@@ -16,8 +16,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
 
-import { ChartConfiguration, ChartOptions } from 'chart.js';
-import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartOptions, ChartType } from 'chart.js';
+import { BaseChartDirective, NgChartsConfiguration } from 'ng2-charts';
 
 import { Subscription } from 'rxjs';
 
@@ -55,6 +55,9 @@ export class Graph implements OnInit, OnDestroy {
 
     newDataSubscription!: Subscription;
 
+    lineChartData: ChartConfiguration['data'];
+    lineChartOptions!: ChartOptions;
+
     constructor(
         private modal: ModalService,
         public events: EventsService,
@@ -62,9 +65,14 @@ export class Graph implements OnInit, OnDestroy {
         public storage: StorageService
     ) {
         this.selAttr = this.modal.dlgData.keyVal.value;
+
+        this.lineChartData = this.chartData;
+        this.lineChartOptions = this.chartOptions;
     }
 
-    lineChartData: ChartConfiguration<'line'> ['data'] = {
+    //lineChartType: ChartType = 'line';
+
+    chartData: any = {
         labels: [],
         datasets: [
             {
@@ -80,7 +88,9 @@ export class Graph implements OnInit, OnDestroy {
             },
         ]
     };
-    public lineChartOptions: ChartOptions<'line'> = {
+
+    //lineChartOptions: ChartConfiguration['options'] = {
+    chartOptions: any = {
         responsive: true,
         hover: {
             mode: 'nearest',
@@ -133,7 +143,7 @@ export class Graph implements OnInit, OnDestroy {
 
     };
 
-    public lineChartLegend = false;
+    lineChartLegend = false;
 
     /***********************************************************************************************
      * fn          ngOnDestroy
@@ -173,7 +183,6 @@ export class Graph implements OnInit, OnDestroy {
         this.lineChartData.datasets[0].data = [];
 
         const len = this.selAttr.timestamps.length;
-        //const start = this.selAttr.timestamps[0];
         const end = this.selAttr.timestamps[len-1];
         let minVal = 1e6;
         let maxVal = -1e6;
@@ -187,7 +196,6 @@ export class Graph implements OnInit, OnDestroy {
                 }
             }
             this.lineChartData.datasets[0].data[i] = corrVal;
-            //this.lineChartData.labels[i] = this.utils.secToTime(this.selAttr.timestamps[i] - start);
             this.lineChartData.labels[i] = this.utils.secToTime(end - this.selAttr.timestamps[i]);
             if(corrVal > maxVal){
                 maxVal = corrVal;
@@ -219,24 +227,22 @@ export class Graph implements OnInit, OnDestroy {
                 min -= step;
             }
         }
-        const chartOpt = this.lineChartOptions as any;
-        const chartData = this.lineChartData as any;
 
-        chartOpt.scales.y.max = max;
-        chartOpt.scales.y.min = min;
-        chartOpt.scales.y.ticks.stepSize = step;
+        this.chartOptions.scales.y.max = max;
+        this.chartOptions.scales.y.min = min;
+        this.chartOptions.scales.y.ticks.stepSize = step;
 
         switch(this.selAttr.partNum){
             case gConst.SI7021_027_T:
             case gConst.SHT40_018_T:
             case gConst.HTU21D_005_T: {
-                chartData.datasets[0].tension = 0.2;
-                chartData.datasets[0].borderColor = 'red';
+                this.chartData.datasets[0].tension = 0.2;
+                this.chartData.datasets[0].borderColor = 'red';
                 let unit = 'degC';
                 if(this.selAttr.valCorr.units == gConst.DEG_F){
                     unit = 'degF';
                 }
-                chartOpt.plugins.tooltip.callbacks = {
+                this.chartOptions.plugins.tooltip.callbacks = {
                     title: (tooltipItem: any) => {
                         return tooltipItem[0].label;
                     },
@@ -254,9 +260,9 @@ export class Graph implements OnInit, OnDestroy {
             case gConst.SI7021_027_RH:
             case gConst.SHT40_018_RH:
             case gConst.HTU21D_005_RH: {
-                chartData.datasets[0].tension = 0.2;
-                chartData.datasets[0].borderColor = 'green';
-                chartOpt.plugins.tooltip.callbacks = {
+                this.chartData.datasets[0].tension = 0.2;
+                this.chartData.datasets[0].borderColor = 'green';
+                this.chartOptions.plugins.tooltip.callbacks = {
                     title: (tooltipItem: any) => {
                         return tooltipItem[0].label;
                     },
@@ -272,11 +278,11 @@ export class Graph implements OnInit, OnDestroy {
                 break;
             }
             case gConst.ENS_015_AQ: {
-                chartOpt.scales.y.max = 5;
-                chartOpt.scales.y.min = 1;
-                chartOpt.scales.y.ticks.stepSize = 1;
-                chartData.datasets[0].borderColor = 'green';
-                chartOpt.plugins.tooltip.callbacks = {
+                this.chartOptions.scales.y.max = 5;
+                this.chartOptions.scales.y.min = 1;
+                this.chartOptions.scales.y.ticks.stepSize = 1;
+                this.chartData.datasets[0].borderColor = 'green';
+                this.chartOptions.plugins.tooltip.callbacks = {
                     title: (tooltipItem: any) => {
                         return tooltipItem[0].label;
                     },
@@ -292,11 +298,11 @@ export class Graph implements OnInit, OnDestroy {
                 break;
             }
             case gConst.SSR_009_RELAY: {
-                chartOpt.scales.y.max = 1;
-                chartOpt.scales.y.min = 0;
-                chartOpt.scales.y.ticks.stepSize = 1;
-                chartData.datasets[0].borderColor = 'black';
-                chartOpt.plugins.tooltip.callbacks = {
+                this.chartOptions.scales.y.max = 1;
+                this.chartOptions.scales.y.min = 0;
+                this.chartOptions.scales.y.ticks.stepSize = 1;
+                this.chartData.datasets[0].borderColor = 'black';
+                this.chartOptions.plugins.tooltip.callbacks = {
                     title: (tooltipItem: any) => {
                         return tooltipItem[0].label;
                     },
@@ -316,8 +322,8 @@ export class Graph implements OnInit, OnDestroy {
         }
 
         setTimeout(() => {
-            this.chart!.update();
-        }, 100);
+            this.chart?.update('none');
+        }, 0);
 
     }
     /***********************************************************************************************

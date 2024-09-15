@@ -37,7 +37,7 @@ export class SetName implements AfterViewInit {
 
     name = '';
     minNameLen = 2;
-    maxNameLen = 8;
+    maxNameLen = 16;
 
     title = '';
 

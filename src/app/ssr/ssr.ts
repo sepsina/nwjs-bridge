@@ -33,11 +33,13 @@ export class SSR  {
 
     @HostBinding('attr.id') hostID = 'ssr-dlg';
 
+    selAttr: gIF.hostedAttr_t;
+
     constructor(
         private modal: ModalService,
         private events: EventsService
     ) {
-        // ---
+        this.selAttr = this.modal.dlgData.attr;
     }
 
     /***********************************************************************************************

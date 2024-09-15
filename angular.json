@@ -44,7 +44,8 @@
                 }
             ],
             "styles": [
-                "src/styles.scss"
+                "src/styles.scss",
+                "src/assets/fonts/font-awesome-4.7.0/css/font-awesome.min.css"
             ],
             "scripts": []
           },
@@ -53,7 +54,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "700kB",
                   "maximumError": "1MB"
                 },
                 {

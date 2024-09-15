@@ -35,7 +35,6 @@ export class ModalService {
      */
     async openDlg(){
 
-        //let dlgComponent!: ComponentRef<any>;
         let opts = {} as any;
 
         if(this.openFlag == true){
@@ -73,11 +72,6 @@ export class ModalService {
             case gIF.eDlgType.E_LOGS: {
                 const { ShowLogs } = await import('../logs/show-logs');
                 this.dlgComponent = createComponent(ShowLogs, opts);
-                break;
-            }
-            case gIF.eDlgType.E_MOVE: {
-                const { MoveElement } = await import('../move-element/move-element');
-                this.dlgComponent = createComponent(MoveElement, opts);
                 break;
             }
             case gIF.eDlgType.E_UNITS: {
@@ -118,7 +112,6 @@ export class ModalService {
      */
     closeDlg() {
 
-        //this.modalComponent.location.nativeElement.remove();
         this.dlgComponent.destroy();
         this.modalComponent.destroy();
 
