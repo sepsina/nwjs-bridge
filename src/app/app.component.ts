@@ -109,7 +109,21 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch(e) {
             console.log(e);
         }
-
+        /*
+        const net = window.nw.require('net');
+        const client = new net.Socket();
+        client.connect(4443, 'localhost', ()=>{
+            client.write('loaded');
+        });
+        client.on('data', (data: any)=>{
+            console.log('Received: ' + data);
+            client.destroy(); // kill client after server's response
+        });
+        client.on('close', ()=>{
+            console.log('Connection closed');
+        });
+        window.nw.Window.get().show();
+        */
         setTimeout(() => {
             this.init();
         }, 10);
