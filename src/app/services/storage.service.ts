@@ -21,10 +21,14 @@ export class StorageService {
 
     nvThermostatsMap = new Map();
 
+    txBuf = new Uint8Array(1024);
+    rwBuf = new gIF.rwBuf_t();
+
     constructor() {
         setTimeout(()=>{
             this.init();
         }, 100);
+        this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
     }
 
     async init() {
@@ -176,6 +180,21 @@ export class StorageService {
      */
     attrKey(params: any) {
 
+        this.rwBuf.wrIdx = 0;
+
+        this.rwBuf.write_uint64_LE(params.extAddr);
+        this.rwBuf.write_uint8(params.endPoint);
+        this.rwBuf.write_uint16_LE(params.clusterID);
+        this.rwBuf.write_uint16_LE(params.attrSetID);
+        this.rwBuf.write_uint16_LE(params.attrID);
+        const len = this.rwBuf.wrIdx;
+        let key = [];
+        for (let i = 0; i < len; i++) {
+            key[i] = this.txBuf[i].toString(16);
+        }
+        return `${ATTR}-${key.join('')}`;
+
+        /*
         const len = 8 + 1 + 2 + 2 + 2;
         let i = 0;
         let ab = new ArrayBuffer(len);
@@ -194,6 +213,7 @@ export class StorageService {
             key[i] = dv.getUint8(i).toString(16);
         }
         return `${ATTR}-${key.join('')}`;
+        */
     }
 
     /***********************************************************************************************
@@ -241,6 +261,18 @@ export class StorageService {
      */
     bindKey(bind: gIF.hostedBind_t) {
 
+        this.rwBuf.wrIdx = 0;
+
+        this.rwBuf.write_uint64_LE(bind.extAddr);
+        this.rwBuf.write_uint8(bind.srcEP);
+        this.rwBuf.write_uint16_LE(bind.clusterID);
+        const len = this.rwBuf.wrIdx;
+        let key = [];
+        for (let i = 0; i < len; i++) {
+            key[i] = this.txBuf[i].toString(16);
+        }
+        return `${BIND}-${key.join('')}`;
+        /*
         const len = 8 + 1 + 2;
         let i = 0;
         let ab = new ArrayBuffer(len);
@@ -255,6 +287,7 @@ export class StorageService {
             key[i] = dv.getUint8(i).toString(16);
         }
         return `${BIND}-${key.join('')}`;
+        */
     }
 
     /***********************************************************************************************
@@ -329,6 +362,17 @@ export class StorageService {
      */
     thermostatKey(extAddr: number, endPoint: number) {
 
+        this.rwBuf.wrIdx = 0;
+
+        this.rwBuf.write_uint64_LE(extAddr);
+        this.rwBuf.write_uint8(endPoint);
+        const len = this.rwBuf.wrIdx;
+        let key = [];
+        for (let i = 0; i < len; i++) {
+            key[i] = this.txBuf[i].toString(16);
+        }
+        return `${THERMOSTAT}-${key.join('')}`;
+        /*
         const len = 8 + 1;
         let i = 0;
         let ab = new ArrayBuffer(len);
@@ -341,6 +385,7 @@ export class StorageService {
             key[i] = dv.getUint8(i).toString(16);
         }
         return `${THERMOSTAT}-${key.join('')}`;
+        */
 
     }
 
@@ -384,7 +429,6 @@ export class StorageService {
         localStorage.setItem(key, JSON.stringify(thermostat));
 
         this.nvThermostatsMap.set(key, thermostat);
-
     }
 
 }

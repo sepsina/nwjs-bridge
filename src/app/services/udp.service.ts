@@ -307,10 +307,17 @@ export class UdpService {
     udpSend(rem: gIF.rinfo_t) {
 
         const len = this.rwBuf.wrIdx;
-        this.udpSocket.send(this.txBuf.slice(0, len), 0, len, rem.port, rem.address, (err: any)=>{
-            if(err) {
-                console.log('UDP ERR: ' + JSON.stringify(err));
+        this.udpSocket.send(
+            this.txBuf.slice(0, len),
+            0,
+            len,
+            rem.port,
+            rem.address,
+            (err: any)=>{
+                if(err) {
+                    console.log('UDP ERR: ' + JSON.stringify(err));
+                }
             }
-        });
+        );
     }
 }

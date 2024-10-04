@@ -220,15 +220,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         };
         bkgImg.src = bkgImgPath;
 
-        const nvScrolls = JSON.parse(this.storage.getScrolls());
-        if(nvScrolls){
-            this.scrolls = [];
-            for(let i = 0; i < nvScrolls.length; i++){
-                this.scrolls.push(nvScrolls[i]);
+        const scrolls = this.storage.getScrolls();
+        if(scrolls){
+            const nvScrolls = JSON.parse(this.storage.getScrolls());
+            if(nvScrolls){
+                this.scrolls = [];
+                for(let i = 0; i < nvScrolls.length; i++){
+                    this.scrolls.push(nvScrolls[i]);
+                }
+                setTimeout(()=>{
+                    this.scrollSelRef.nativeElement.value = '0';
+                }, 0);
             }
-            setTimeout(()=>{
-                this.scrollSelRef.nativeElement.value = '0';
-            }, 0);
         }
     }
 
