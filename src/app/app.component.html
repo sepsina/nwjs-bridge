@@ -21,7 +21,7 @@
         </div>
         <div id="plan-container" #containerRef>
             <div id="floor-plan" #floorPlanRef resizeObserver (resize)="onResize($event)">
-                @for(keyVal of storage.attrMap | keyvalue; track keyVal){
+                @for(keyVal of storage.attrMap | keyvalue; track keyVal.key){
                     <div
                         #attrRef
                         class="attr"
