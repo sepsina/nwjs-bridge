@@ -4,6 +4,7 @@ import {
     EnvironmentInjector,
     Injectable,
     createComponent,
+    inject,
 } from '@angular/core';
 
 import { ModalComponent } from '../modal/modal.component';
@@ -22,8 +23,10 @@ export class ModalService {
 
     openFlag = false;
 
-    constructor(private appRef: ApplicationRef,
-                private injector: EnvironmentInjector) {
+    appRef = inject(ApplicationRef);
+    envInjector = inject(EnvironmentInjector);
+
+    constructor() {
         // ---
     }
 
@@ -41,8 +44,8 @@ export class ModalService {
             return;
         }
         this.openFlag = true;
+        opts.environmentInjector = this.envInjector;
 
-        opts.environmentInjector = this.injector;
         switch(this.dlgType){
             case gIF.eDlgType.E_ATTR_NAME: {
                 const { SetName } = await import('../set-name/set-name');
@@ -95,7 +98,9 @@ export class ModalService {
                 break;
             }
         }
-        opts.projectableNodes = [[this.dlgComponent.location.nativeElement]];
+        opts.projectableNodes = [
+            [this.dlgComponent.location.nativeElement]
+        ];
         this.modalComponent = createComponent(ModalComponent, opts);
         document.body.appendChild(this.modalComponent.location.nativeElement);
 

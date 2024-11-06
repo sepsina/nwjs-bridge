@@ -1,11 +1,11 @@
 <div class="col-top-strech"
      cdkDrag
      cdkDragRootElement="#name-dlg"
-     cdkDragBoundary="#modal-container">
+     cdkDragBoundary=".cdk-overlay-container">
 
     <div class="row-right dlg-header">
         <div class="row-left dlg-title" cdkDragHandle>
-            {{title}}
+            {{title()}}
         </div>
         <button (click)="close()">
             <i class="fa fa-times"></i>
@@ -22,8 +22,9 @@
                        [minLength]="minNameLen"
                        [maxLength]="maxNameLen"
                        size="16"
-                       (change)="onNameChange(attrName.value)"
-                       (blur)="onNameBlur(attrName.value)">
+                       [ngModel]="m_name()"
+                       (ngModelChange)="onNameChange($event)"
+                       (blur)="onNameBlur()">
             </div>
         </div>
     </div>

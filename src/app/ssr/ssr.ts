@@ -1,10 +1,15 @@
 import {
     Component,
-    HostBinding
+    inject,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
+import { StorageService } from '../services/storage.service';
 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,19 +32,24 @@ const TOGGLE = 2;
         CdkDragHandle
     ],
     templateUrl: './ssr.html',
-    styleUrls: ['./ssr.scss']
+    styleUrls: ['./ssr.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SSR  {
 
-    @HostBinding('attr.id') hostID = 'ssr-dlg';
+    hostID = 'ssr-dlg';
 
     selAttr: gIF.hostedAttr_t;
 
-    constructor(
-        private modal: ModalService,
-        private events: EventsService
-    ) {
-        this.selAttr = this.modal.dlgData.attr;
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
+        this.selAttr = this.dlgData.attr;
     }
 
     /***********************************************************************************************
@@ -49,7 +59,7 @@ export class SSR  {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -92,8 +102,8 @@ export class SSR  {
         const zclCmd = {} as gIF.udpZclReq_t;
         zclCmd.ip = '';
         zclCmd.port = 0;
-        zclCmd.extAddr = this.modal.dlgData.attr.extAddr;
-        zclCmd.endPoint = this.modal.dlgData.attr.endPoint;
+        zclCmd.extAddr = this.selAttr.extAddr;
+        zclCmd.endPoint = this.selAttr.endPoint;
         zclCmd.clusterID = gConst.CLUSTER_ID_GEN_ON_OFF;
         zclCmd.hasRsp = 0;
         zclCmd.cmdLen = 3;
@@ -102,7 +112,7 @@ export class SSR  {
         zclCmd.cmd[1] = 0x00; // seq num -> not used
         zclCmd.cmd[2] = state;  // ON/OFF command
         //this.serialLink.udpZclCmd(JSON.stringify(zclCmd));
-        this.events.publish('zcl_cmd', zclCmd);
+        this.storage.zclCmd.set(zclCmd);
     }
 
 }

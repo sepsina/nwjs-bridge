@@ -355,6 +355,11 @@ export interface nameDlgReturn_t {
     name: string;
 }
 
+export interface units_t {
+    name: string;
+    units: number;
+}
+
 export class rwBuf_t {
 
     rdIdx!: number;

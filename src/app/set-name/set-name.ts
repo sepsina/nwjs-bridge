@@ -1,14 +1,19 @@
 import {
     Component,
     AfterViewInit,
-    ViewChild,
     ElementRef,
-    HostBinding
+    viewChild,
+    inject,
+    signal,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
-import { EventsService } from '../services/events.service';
 
 import * as gConst from '../gConst';
 import * as gIF from '../gIF'
@@ -16,7 +21,6 @@ import * as gIF from '../gIF'
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
-
 
 @Component({
     selector: 'app-name',
@@ -29,31 +33,32 @@ import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
     ],
     templateUrl: './set-name.html',
     styleUrls: ['./set-name.scss'],
+    host: {
+        '[attr.id]': 'hostID'
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SetName implements AfterViewInit {
 
-    @ViewChild('attrName') attrNameRef!: ElementRef;
-    @HostBinding('attr.id') hostID = 'name-dlg';
+    hostID = 'name-dlg';
+    attrNameRef = viewChild.required('attrName', {read: ElementRef});
 
     name = '';
     minNameLen = 2;
     maxNameLen = 16;
 
-    title = '';
+    title = signal('');
 
-    dlgData = {} as gIF.nameDlgData_t;
-    dlgReturn = {} as gIF.nameDlgReturn_t;
+    m_name = signal('');
 
-    //selAttr = {} as gIF.keyVal_t;
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
 
-    constructor(
-        public modal: ModalService,
-        public events: EventsService,
-        public storage: StorageService
-    ) {
-        //this.selAttr = this.modal.dlgData.keyVal;
-        this.name = this.modal.dlgData.keyVal.value.name;
-        this.title = this.name;
+    selAttr = {} as gIF.keyVal_t;
+
+    constructor() {
+        // ---
     }
 
     /***********************************************************************************************
@@ -63,10 +68,15 @@ export class SetName implements AfterViewInit {
      *
      */
     ngAfterViewInit(): void {
-        setTimeout(()=>{
-            this.attrNameRef.nativeElement.value = this.name;
-            this.attrNameRef.nativeElement.focus();
-            this.attrNameRef.nativeElement.select();
+
+        this.selAttr = this.dlgData.keyVal;
+        this.name = this.selAttr.value.name;
+        this.title.set(this.name);
+        this.m_name.set(this.name);
+
+        setTimeout(() => {
+            this.attrNameRef().nativeElement.focus();
+            this.attrNameRef().nativeElement.select();
         }, 0);
     }
 
@@ -77,8 +87,8 @@ export class SetName implements AfterViewInit {
      *
      */
     save() {
-        this.storage.setAttrName(this.name, this.modal.dlgData.keyVal);
-        this.modal.closeDlg();
+        this.storage.setAttrName(this.name, this.selAttr);
+        this.dialogRef.close();
     }
     /***********************************************************************************************
      * @fn          close
@@ -87,7 +97,7 @@ export class SetName implements AfterViewInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -98,17 +108,15 @@ export class SetName implements AfterViewInit {
      */
     onNameChange(newName: string){
 
-        console.log(`new val: ${newName}`);
-
-        const nameLen = newName.length;
-        if(newName == '' || nameLen < this.minNameLen) {
-            return;
+        const name_len = newName.length;
+        if(newName != ''){
+            if(name_len >= this.minNameLen){
+                if(name_len <= this.maxNameLen){
+                    this.name = newName;
+                }
+            }
         }
-        if(nameLen > this.maxNameLen){
-            this.attrNameRef.nativeElement.value = this.name;
-            return;
-        }
-        this.name = newName;
+        this.m_name.set(newName);
     }
 
     /***********************************************************************************************
@@ -117,14 +125,15 @@ export class SetName implements AfterViewInit {
      * @brief
      *
      */
-    onNameBlur(newName: string){
+    onNameBlur(){
 
-        console.log(`name blur: ${newName}`);
-
-        const nameLen = newName.length;
-        if(newName == '' || (nameLen < this.minNameLen)) {
-            this.attrNameRef.nativeElement.value = this.name;
+        const nameLen = this.m_name().length;
+        if(this.m_name() == '' || (nameLen < this.minNameLen) || (nameLen > this.maxNameLen)) {
+            this.m_name.set(this.name);
+            return;
         }
+        this.name = this.m_name();
+
     }
 
 }

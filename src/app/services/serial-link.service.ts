@@ -1,6 +1,5 @@
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, effect, inject } from '@angular/core';
 import { StorageService } from './storage.service';
-import { EventsService } from './events.service';
 import { UtilsService } from './utils.service';
 import { Globals } from './globals';
 import * as gConst from '../gConst';
@@ -15,13 +14,11 @@ export class SerialLinkService  {
     txBuf = new Uint8Array(1024);
     rwBuf = new gIF.rwBuf_t();
 
-    constructor(
-        private events: EventsService,
-        private storage: StorageService,
-        private utils: UtilsService,
-        private globs: Globals,
-        private ngZone: NgZone
-    ) {
+    storage = inject(StorageService);
+    utils = inject(UtilsService);
+    globs = inject(Globals);
+
+    constructor() {
         this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
     }
 
@@ -34,15 +31,6 @@ export class SerialLinkService  {
     initApp() {
 
         this.storage.readAllKeys();
-
-        this.events.subscribe('attr_set', (attrSet)=>{
-            this.ngZone.run(()=>{
-                this.parseAttrSet(attrSet);
-            });
-        });
-        this.events.subscribe('cluster_bind', (bind)=>{
-            this.addBind(bind);
-        });
 
         setTimeout(()=>{
             this.cleanAgedAttribs();
@@ -69,7 +57,7 @@ export class SerialLinkService  {
      * brief
      *
      */
-    private parseAttrSet(attrSet: gIF.attrSet_t) {
+    parseAttrSet(attrSet: gIF.attrSet_t) {
 
         const now = Math.round(Date.now() / 1000);
         const attrSpec = this.getAttrSpec(attrSet);
@@ -83,7 +71,7 @@ export class SerialLinkService  {
                 newVal.attrSetID = attrSet.attrSetID;
                 newVal.attrID = spec.attrID;
                 const key = this.storage.attrKey(newVal);
-                const currVal: gIF.hostedAttr_t = this.storage.attrMap.get(key);
+                const currVal: gIF.hostedAttr_t = this.storage.attrMap().get(key);
                 if(currVal) {
                     currVal.timestamp = spec.timestamp;
                     currVal.hostShortAddr = attrSet.hostShortAddr;
@@ -97,6 +85,10 @@ export class SerialLinkService  {
                                          spec.attrVal,
                                          currVal);
                     }
+                    this.storage.attrMap.update((map)=>{
+                        //map.set(key, currVal);
+                        return new Map(map);
+                    });
                 } else {
                     newVal.drag = false;
                     newVal.isSel = false;
@@ -129,7 +121,10 @@ export class SerialLinkService  {
                                          spec.attrVal,
                                          newVal);
                     }
-                    this.storage.attrMap.set(key, newVal);
+                    this.storage.attrMap.update((map)=>{
+                        map.set(key, newVal);
+                        return new Map(map);
+                    });
                 }
                 console.log(spec.formatedVal);
             }
@@ -146,10 +141,13 @@ export class SerialLinkService  {
 
         let diff: number;
         let now = Math.round(Date.now() / 1000);
-        for(let [key, val] of this.storage.attrMap) {
+        for(let [key, val] of this.storage.attrMap()) {
             diff = now - val.timestamp;
             if(diff > gConst.ATTR_TTL) {
-                this.storage.attrMap.delete(key);
+                this.storage.attrMap.update((map)=>{
+                    map.delete(key);
+                    return new Map(map);
+                });
             }
             if(diff > gConst.ATTR_VALID_TTL) {
                 val.isValid = false;
@@ -166,7 +164,7 @@ export class SerialLinkService  {
      * brief
      *
      */
-    private addBind(bind: gIF.clusterBind_t) {
+    addBind(bind: gIF.clusterBind_t) {
 
         const now = Math.round(Date.now() / 1000);
         const newVal = {} as gIF.hostedBind_t;
@@ -197,6 +195,7 @@ export class SerialLinkService  {
             newVal.srcShortAddr = bind.srcShortAddr;
             newVal.dstEP = bind.dstEP;
             newVal.dstExtAddr = bind.dstExtAddr;
+
             this.storage.bindsMap.set(key, newVal);
         }
         let msg = '';
@@ -287,7 +286,7 @@ export class SerialLinkService  {
                     attr.timestamps.shift();
                     attr.attrVals.shift();
                 }
-                this.events.publish('newData', attr);
+                this.storage.chartData.set(attr);
             }
         }
         else {
@@ -399,7 +398,7 @@ export class SerialLinkService  {
                 tempEvent.extAddr = attrSet.extAddr;
                 tempEvent.endPoint = attrSet.endPoint;
 
-                this.events.publish('temp_event', tempEvent);
+                this.storage.tempEvent.set(tempEvent);
                 break;
             }
             case gConst.SH_006_SH: {

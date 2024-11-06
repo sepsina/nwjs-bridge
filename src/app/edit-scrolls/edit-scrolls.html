@@ -1,7 +1,7 @@
 <div class="col-top-strech"
      cdkDrag
      cdkDragRootElement="#scrolls-dlg"
-     cdkDragBoundary="#modal-container">
+     cdkDragBoundary=".cdk-overlay-container">
 
     <div class='row-right-stretch dlg-header'>
         <div class="row-left dlg-title" cdkDragHandle>
@@ -16,8 +16,9 @@
             <div class="row-center">
                 <label>scroll:</label>
                 <select #scrollSel
-                        (change)="onScrollSelected(scrollSel.value)" >
-                    @for(scroll of allScrolls; track scroll.name; let i = $index) {
+                        [ngModel]="m_scroll_sel()"
+                        (ngModelChange)="onScrollSelected($event)">
+                    @for(scroll of allScrolls(); track scroll.name; let i = $index) {
                         <option value="{{i}}">
                             {{scroll.name}}
                         </option>
@@ -33,8 +34,9 @@
                     #scrollName
                     type="text"
                     [maxLength]="maxNameLen"
-                    (change)="onNameChange(scrollName.value)"
-                    (blur)="onNameBlur(scrollName.value)">
+                    [ngModel]="m_scroll_name()"
+                    (ngModelChange)="onNameChange($event)"
+                    (blur)="onNameBlur()">
             </div>
             <div class="row-left">
                 <label>position:</label>
@@ -43,8 +45,9 @@
                     type="number"
                     [min]="minPos"
                     [max]="maxPos"
-                    (change)="onPosChange(yPos.value)"
-                    (blur)="onPosBlur(yPos.value)">
+                    [ngModel]="m_y_pos()"
+                    (ngModelChange)="onPosChange($event)"
+                    (blur)="onPosBlur()">
                 <div class="row-right" id="delBtn">
                     <button (click)="addScroll()">
                         <i class="fa fa-plus-circle"></i> new

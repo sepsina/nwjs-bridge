@@ -1,63 +1,25 @@
-import { Component, AfterViewInit, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { ModalService } from '../services/modal.service';
-import { Subject, filter, fromEvent, takeUntil } from 'rxjs';
 
 @Component({
     selector: 'app-modal',
+    standalone: true,
     templateUrl: './modal.component.html',
     styleUrls: ['./modal.component.scss'],
     imports: [
-        CommonModule
-    ],
-    standalone: true,
+        CdkTrapFocus
+    ]
 })
-export class ModalComponent implements  OnInit, AfterViewInit {
+export class ModalComponent {
 
-    private unsubscribe$ = new Subject<void>();
+    modal = inject(ModalService);
 
-    constructor(private modal: ModalService) {
+    constructor() {
         // ---
     }
 
-    ngAfterViewInit() {
-        // ---
-    }
-
-    ngOnInit() {
-        this.listenToEscapeKey();
-
-    }
-
-    /***********************************************************************************************
-     * @fn          listenToEscapeKey
-     *
-     * @brief
-     *
-     */
-    listenToEscapeKey() {
-        fromEvent(document, 'keyup')
-        .pipe(
-            filter((event: any) => event.code === 'Escape'),
-            takeUntil(this.unsubscribe$)
-        )
-        .subscribe(() => {
-            this.close();
-        });
-    }
-
-    /***********************************************************************************************
-     * @fn          close
-     *
-     * @brief
-     *
-     */
-    close() {
-
-        this.unsubscribe$.next();
-        this.unsubscribe$.complete();
-
+    close(){
         this.modal.closeDlg();
     }
-
 }

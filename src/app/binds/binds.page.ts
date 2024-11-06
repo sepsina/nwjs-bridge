@@ -2,12 +2,17 @@ import {
     Component,
     ElementRef,
     AfterViewInit,
-    HostBinding,
-    ViewChild
+    viewChild,
+    inject,
+    signal,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
 import { UtilsService } from '../services/utils.service';
 
@@ -29,39 +34,40 @@ import * as gIF from '../gIF'
     ],
     templateUrl: './binds.page.html',
     styleUrls: ['./binds.page.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditBinds implements AfterViewInit {
 
-    @ViewChild('bindSrcSel') srcSelRef!: ElementRef;
-    @ViewChild('bindName') bindNameRef!: ElementRef;
-    @ViewChild('bindDstSel') dstSelRef!: ElementRef;
+    hostID = 'binds-dlg';
 
-    @HostBinding('attr.id') hostID = 'binds-dlg';
-
-    bind_name = '';
     maxNameLen = 16;
 
-    allBindSrc: gIF.hostedBind_t[] = [];
-    freeBindDst: gIF.bind_t[] = [];
+    m_src_sel = signal('0');
+    m_bind_name= signal('');
+    m_dst_sel = signal('0');
+
+    allBindSrc = signal<gIF.hostedBind_t[]>([]);
+    freeBindDst = signal<gIF.bind_t[]>([]);
     allBindDst: gIF.bind_t[] = [];
 
     srcValid = false;
 
     selSrc = {} as gIF.hostedBind_t;
     selDst = {} as gIF.bind_t;
-    srcIdx = 0;
-    dstIdx = 0;
 
-    bindSrcDesc: gIF.descVal_t[] = [];
-    bindDstDesc: gIF.descVal_t[] = [];
+    bindSrcDesc = signal<gIF.descVal_t[]>([]);
+    bindDstDesc = signal<gIF.descVal_t[]>([]);
 
-    constructor(
-        private modal: ModalService,
-        private events: EventsService,
-        private storage: StorageService,
-        private utils: UtilsService
-    ) {
-        this.allBindSrc = JSON.parse(JSON.stringify(Array.from(this.storage.bindsMap.values())));
+    storage = inject(StorageService);
+    utils = inject(UtilsService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
+        // ---
     }
 
     /***********************************************************************************************
@@ -71,60 +77,25 @@ export class EditBinds implements AfterViewInit {
      *
      */
      ngAfterViewInit(){
-        setTimeout(() => {
-            this.init();
-        }, 10);
-    }
 
-    /***********************************************************************************************
-     * @fn          onNameChange
-     *
-     * @brief
-     *
-     */
-    onNameChange(newName: string){
+        const attribs: gIF.hostedAttr_t[] = [...this.storage.attrMap().values()] ;
+        const all_bind_src: gIF.hostedBind_t[] = [...this.storage.bindsMap.values()];
 
-        console.log(`new val: ${newName}`);
-
-        if(newName == '') {
-            return;
+        if(all_bind_src.length){
+            this.allBindSrc.set(all_bind_src);
+            this.srcValid = true;
         }
-        if(newName.length > this.maxNameLen){
-            this.bindNameRef.nativeElement.value = this.bind_name;
-            return;
+        else {
+            this.allBindSrc.set([
+                gConst.invalidHostedBind
+            ]);
+            this.srcValid = false;
         }
-        this.bind_name = newName;
-    }
-
-    /***********************************************************************************************
-     * @fn          onNameBlur
-     *
-     * @brief
-     *
-     */
-    onNameBlur(newName: string){
-
-        console.log(`name blur: ${newName}`);
-
-        if(newName == '') {
-            this.bindNameRef.nativeElement.value = this.bind_name;
-        }
-    }
-
-    /***********************************************************************************************
-     * fn          init
-     *
-     * brief
-     *
-     */
-    init() {
-
-        let attribs: gIF.hostedAttr_t[] = JSON.parse(JSON.stringify(Array.from(this.storage.attrMap.values())));
 
         this.allBindDst = [];
         for(const attr of attribs) {
             if(attr.clusterServer){
-                let bind = {} as gIF.bind_t;
+                const bind = {} as gIF.bind_t;
                 bind.valid = true;
                 bind.extAddr = attr.extAddr;
                 bind.name = attr.name;
@@ -135,23 +106,25 @@ export class EditBinds implements AfterViewInit {
                 this.allBindDst.push(bind);
             }
         }
-        if(this.allBindSrc.length){
-            this.srcValid = true;
-        }
-        else {
-            this.allBindSrc.push(gConst.invalidHostedBind);
-            this.srcValid = false;
-        }
-        this.selSrc = this.allBindSrc[0];
-        this.srcIdx = 0;
-        this.bind_name = this.selSrc.name;
-        this.bindNameRef.nativeElement.value = this.selSrc.name;
+        this.bindSrcSelect('0');
+    }
+
+    /***********************************************************************************************
+     * fn          bindSrcSelect
+     *
+     * brief
+     *
+     */
+    bindSrcSelect(idx: string){
+
+        this.m_src_sel.set(idx);
+
+        const i = parseInt(idx);
+        this.selSrc = this.allBindSrc()[i];
+        this.m_bind_name.set(this.selSrc.name);
+        this.setBindSrcDesc(this.selSrc);
 
         this.setBind(this.selSrc);
-        this.setBindSrcDesc(this.selSrc);
-        setTimeout(()=>{
-            this.srcSelRef.nativeElement.value = `${this.srcIdx}`;
-        }, 0);
     }
 
     /***********************************************************************************************
@@ -162,65 +135,86 @@ export class EditBinds implements AfterViewInit {
      */
     setBind(selSrc: gIF.hostedBind_t){
 
-        let i = 0;
-
-        this.freeBindDst = [];
-        this.freeBindDst.push(gConst.invalidBind);
-        this.selDst = this.freeBindDst[0];
-        this.dstIdx = 0;
-
-        for(i = 0; i < this.allBindDst.length; i++){
+        const free_dst = [];
+        free_dst.push(gConst.invalidBind);
+        for(let i = 0; i < this.allBindDst.length; i++){
             if(this.allBindDst[i].clusterID === selSrc.clusterID){
-                this.freeBindDst.push(this.allBindDst[i]);
+                free_dst.push(this.allBindDst[i]);
             }
         }
-        this.bindDstDesc = [];
+        this.freeBindDst.set(free_dst);
+
+        this.selDst = free_dst[0];
+        let dstIdx = 0;
+
         if(selSrc.dstExtAddr > 0){
-            for(i = 0; i < this.freeBindDst.length; i++){
-                if(this.freeBindDst[i].extAddr === selSrc.dstExtAddr){
-                    if(this.freeBindDst[i].endPoint === selSrc.dstEP){
-                        this.selDst = this.freeBindDst[i];
-                        this.dstIdx = i;
+            const len = free_dst.length;
+            for(let i = 0; i < len; i++){
+                if(free_dst[i].extAddr == selSrc.dstExtAddr){
+                    if(free_dst[i].endPoint == selSrc.dstEP){
+                        this.selDst = free_dst[i];
+                        dstIdx = i;
                         break;
                     }
                 }
             }
         }
+
+        this.m_dst_sel.set(`${dstIdx}`);
         this.setBindDstDesc(this.selDst);
-        setTimeout(()=>{
-            this.dstSelRef.nativeElement.value = `${this.dstIdx}`;
-        }, 0);
     }
 
     /***********************************************************************************************
-     * fn          bindSrcSelected
+     * @fn          onNameChange
+     *
+     * @brief
+     *
+     */
+    onNameChange(newName: string){
+
+        this.m_bind_name.set(newName);
+    }
+
+    /***********************************************************************************************
+     * @fn          onNameBlur
+     *
+     * @brief
+     *
+     */
+    onNameBlur(){
+
+        if(this.m_bind_name() == this.selSrc.name){
+            return;
+        }
+        if(this.m_bind_name() == ''){
+            this.m_bind_name.set(this.selSrc.name);
+            return;
+        }
+        const nameLen = this.m_bind_name().length;
+        if(nameLen > this.maxNameLen){
+            this.m_bind_name.set(this.selSrc.name);
+            return;
+        }
+        this.selSrc.name = this.m_bind_name();
+
+        this.allBindSrc.update((binds)=>{
+            return [...binds];
+        });
+    }
+
+    /***********************************************************************************************
+     * fn          bindDstSelect
      *
      * brief
      *
      */
-    bindSrcSelected(index: string){
+    bindDstSelect(idx: string){
 
-        const i = parseInt(index);
+        this.m_dst_sel.set(idx);
 
-        this.selSrc = this.allBindSrc[i];
-        this.bind_name = this.selSrc.name;
-        this.bindNameRef.nativeElement.value = this.selSrc.name;
+        const i = parseInt(idx);
+        this.selDst = this.freeBindDst()[i];
 
-        this.setBindSrcDesc(this.selSrc);
-        this.setBind(this.selSrc);
-    }
-
-    /***********************************************************************************************
-     * fn          bindDstSelected
-     *
-     * brief
-     *
-     */
-    bindDstSelected(index: string){
-
-        const i = parseInt(index);
-
-        this.selDst = this.freeBindDst[i];
         this.setBindDstDesc(this.selDst);
     }
 
@@ -232,24 +226,26 @@ export class EditBinds implements AfterViewInit {
      */
     public setBindSrcDesc(srcBind: gIF.hostedBind_t){
 
-        this.bindSrcDesc = [];
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(srcBind.partNum);
+        const bind_desc = [];
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(srcBind.partNum);
         if(partDesc){
             let descVal = {} as gIF.descVal_t;
             descVal.key = 'node:';
             descVal.value = partDesc.devName;
-            this.bindSrcDesc.push(descVal);
+            bind_desc.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 'label:';
             descVal.value = partDesc.part;
-            this.bindSrcDesc.push(descVal);
+            bind_desc.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 's/n:';
             descVal.value = this.utils.extToHex(this.selSrc.extAddr);
-            this.bindSrcDesc.push(descVal);
+            bind_desc.push(descVal);
+
+            this.bindSrcDesc.set(bind_desc);
         }
         else {
-            this.bindSrcDesc = gConst.dummyDesc;
+            this.bindSrcDesc.set(gConst.dummyDesc);
         }
     }
 
@@ -261,24 +257,26 @@ export class EditBinds implements AfterViewInit {
      */
      public setBindDstDesc(bind: gIF.bind_t){
 
-        this.bindDstDesc = [];
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(bind.partNum);
+        const bind_desc = [];
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(bind.partNum);
         if(partDesc){
             let descVal = {} as gIF.descVal_t;
             descVal.key = 'node:';
             descVal.value = partDesc.devName;
-            this.bindDstDesc.push(descVal);
+            bind_desc.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 'label:';
             descVal.value = partDesc.part;
-            this.bindDstDesc.push(descVal);
+            bind_desc.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 's/n:';
             descVal.value = this.utils.extToHex(this.selDst.extAddr);
-            this.bindDstDesc.push(descVal);
+            bind_desc.push(descVal);
+
+            this.bindDstDesc.set(bind_desc);
         }
         else {
-            this.bindDstDesc = gConst.dummyDesc;
+            this.bindDstDesc.set(gConst.dummyDesc);
         }
     }
 
@@ -299,7 +297,8 @@ export class EditBinds implements AfterViewInit {
                 this.selSrc.dstExtAddr = 0;
                 this.selSrc.dstEP = 0;
             }
-            this.events.publish('wr_bind', this.selSrc);
+
+            this.storage.wrBind.set({...this.selSrc});
         }
     }
 
@@ -311,7 +310,6 @@ export class EditBinds implements AfterViewInit {
      */
     async wrBindName() {
         if(this.srcValid){
-            this.selSrc.name = this.bind_name;
             this.storage.setBindName(this.selSrc);
         }
     }
@@ -323,7 +321,7 @@ export class EditBinds implements AfterViewInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
 }

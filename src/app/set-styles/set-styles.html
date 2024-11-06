@@ -1,11 +1,11 @@
 <div class="col-top-strech"
      cdkDrag
      cdkDragRootElement="#styles-dlg"
-     cdkDragBoundary="#modal-container">
+     cdkDragBoundary=".cdk-overlay-container">
 
     <div class='row-right dlg-header'>
         <div class="row-left dlg-title" cdkDragHandle>
-            {{dlg_title}}
+            {{dlg_title()}}
         </div>
         <button (click)="close()">
             <i class="fa fa-times"></i>
@@ -14,7 +14,7 @@
 
     <div class="row-center" id="testCont">
         <div #testView>
-            {{test_text}}
+            {{test_text()}}
         </div>
     </div>
 
@@ -26,26 +26,25 @@
                 type="number"
                 [min]="minFontSize"
                 [max]="maxFontSize"
-                required
-                [ngModel]="style.fontSize"
-                (ngModelChange)="onFontSizeChange(attrFontSize.value)"
-                (blur)="onFontSizeBlur(attrFontSize.value)">
+                [ngModel]="m_font_size()"
+                (ngModelChange)="onFontSizeChange($event)"
+                (blur)="onFontSizeBlur()">
         </div>
         <div class="row-left">
             <label>text color:</label>
             <input #attrColor
                 id="attrColor"
                 type="color"
-                [ngModel]="style.color"
-                (change)="onColorChange(attrColor.value)">
+                [ngModel]="m_color()"
+                (ngModelChange)="onColorChange($event)">
         </div>
         <div class="row-left">
             <label>background color:</label>
             <input #attrBackgroundColor
                 id="attrBackgroundColor"
                 type="color"
-                [ngModel]="style.bgColor"
-                (change)="onBackgroundColorChange(attrBackgroundColor.value)">
+                [ngModel]="m_bg_color()"
+                (ngModelChange)="onBackgroundColorChange($event)">
         </div>
         <div class="row-left">
             <label>opacity:</label>
@@ -55,8 +54,8 @@
                 min="0"
                 max="1"
                 step="0.1"
-                [ngModel]="style.bgOpacity"
-                (change)="onOpacityChange(attrOpacity.value)">
+                [ngModel]="m_opacity()"
+                (ngModelChange)="onOpacityChange($event)">
         </div>
         <div class="col-top-strech cards-common">
             <div class="row-left">
@@ -67,8 +66,8 @@
                 <input #attrBorderColor
                     id="attrBorderColor"
                     type="color"
-                    [ngModel]="style.borderColor"
-                    (change)="onBorderColorChange(attrBorderColor.value)">
+                    [ngModel]="m_border_color()"
+                    (ngModelChange)="onBorderColorChange($event)">
             </div>
             <div class="row-left">
                 <label>width:</label>
@@ -77,9 +76,9 @@
                         type="number"
                         min="0"
                         [max]="maxBorderWidth"
-                        [ngModel]="style.borderWidth"
-                        (ngModelChange)="onBorderWidthChange(attrBorderWidth.value)"
-                        (blur)="onBorderWidthBlur(attrBorderWidth.value)">
+                        [ngModel]="m_border_width()"
+                        (ngModelChange)="onBorderWidthChange($event)"
+                        (blur)="onBorderWidthBlur()">
             </div>
             <div class="row-left">
                 <label>radius:</label>
@@ -88,16 +87,16 @@
                         type="number"
                         min="0"
                         [max]="maxBorderRadius"
-                        [ngModel]="style.borderRadius"
-                        (ngModelChange)="onBorderRadiusChange(attrBorderRadius.value)"
-                        (blur)="onBorderRadiusBlur(attrBorderRadius.value)">
+                        [ngModel]="m_border_radius()"
+                        (ngModelChange)="onBorderRadiusChange($event)"
+                        (blur)="onBorderRadiusBlur()">
             </div>
             <div class="row-left">
                 <label>style:</label>
                 <select id="borderStyle"
                         #borderStyle
-                        [ngModel]="style.borderStyle"
-                        (change)="onBorderStyleChange(borderStyle.value)">
+                        [ngModel]="m_border_style()"
+                        (ngModelChange)="onBorderStyleChange($event)">
                     @for(style of borderStyles; track style) {
                         <option value="{{style}}">
                             {{style}}
@@ -117,9 +116,9 @@
                     min="0"
                     [max]="maxPaddingTop"
                     required
-                    [ngModel]="style.paddingTop"
-                    (ngModelChange)="onPaddingTopChange(attrPaddingTop.value)"
-                    (blur)="onPaddingTopBlur(attrPaddingTop.value)">
+                    [ngModel]="m_padding_top()"
+                    (ngModelChange)="onPaddingTopChange($event)"
+                    (blur)="onPaddingTopBlur()">
             </div>
             <div class="row-center">
                 <div class="col-center">
@@ -129,9 +128,9 @@
                     min="0"
                     [max]="maxPaddingLeft"
                     required
-                    [ngModel]="style.paddingLeft"
-                    (ngModelChange)="onPaddingLeftChange(attrPaddingLeft.value)"
-                    (blur)="onPaddingLeftBlur(attrPaddingLeft.value)">
+                    [ngModel]="m_padding_left()"
+                    (ngModelChange)="onPaddingLeftChange($event)"
+                    (blur)="onPaddingLeftBlur()">
                 </div>
                 <div class="col-center" id="padd-rect">
                 </div>
@@ -142,9 +141,9 @@
                     min="0"
                     [max]="maxPaddingRight"
                     required
-                    [ngModel]="style.paddingRight"
-                    (ngModelChange)="onPaddingRightChange(attrPaddingRight.value)"
-                    (blur)="onPaddingRightBlur(attrPaddingRight.value)">
+                    [ngModel]="m_padding_right()"
+                    (ngModelChange)="onPaddingRightChange($event)"
+                    (blur)="onPaddingRightBlur()">
                 </div>
             </div>
             <div class="row-center">
@@ -154,9 +153,9 @@
                     min="0"
                     [max]="maxPaddingBottom"
                     required
-                    [ngModel]="style.paddingBottom"
-                    (ngModelChange)="onPaddingBottomChange(attrPaddingBottom.value)"
-                    (blur)="onPaddingBottomBlur(attrPaddingBottom.value)">
+                    [ngModel]="m_padding_bottom()"
+                    (ngModelChange)="onPaddingBottomChange($event)"
+                    (blur)="onPaddingBottomBlur()">
             </div>
 
         </div>

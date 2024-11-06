@@ -1,13 +1,16 @@
 import {
     Component,
     AfterViewInit,
-    ElementRef,
-    ViewChild,
-    HostBinding
+    signal,
+    inject,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
 import { UtilsService } from '../services/utils.service';
 
@@ -29,74 +32,59 @@ import * as gIF from '../gIF'
     ],
     templateUrl: './x_stat.page.html',
     styleUrls: ['./x_stat.page.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EditStats implements AfterViewInit {
+export class EditStats implements AfterViewInit{
 
-    @ViewChild('statSel') statSelRef!: ElementRef;
-    @ViewChild('setPoint') setPointRef!: ElementRef;
-    @ViewChild('usedSel') usedSelRef!: ElementRef;
-    @ViewChild('freeSel') freeSelRef!: ElementRef;
-
-    @HostBinding('attr.id') hostID = 'x-stat-dlg';
+    hostID = 'x-stat-dlg';
 
     minSetPoint = 5
     maxSetPoint = 50;
 
-    thermostatDesc: gIF.descVal_t[] = [];
-    usedDesc: gIF.descVal_t[] = [];
-    freeDesc: gIF.descVal_t[] = [];
+    m_stat_sel = signal('0');
+    m_set_point = signal('20');
+    m_used_sel = signal('0');
+    m_free_sel = signal('0');
+
+    thermostatDesc = signal<gIF.descVal_t[]>([]);
+    usedDesc = signal<gIF.descVal_t[]>([]);
+    freeDesc = signal<gIF.descVal_t[]>([]);
 
     selThermostat = {} as gIF.thermostat_t;
-    thermostats: gIF.thermostat_t[] = [];
+    thermostats = signal<gIF.thermostat_t[]>([]);
 
     on_off_all: gIF.on_off_actuator_t[] = [];
-    on_off_used: gIF.on_off_actuator_t[] = [];
-    on_off_free: gIF.on_off_actuator_t[] = [];
+    on_off_used = signal<gIF.on_off_actuator_t[]>([]);
+    on_off_free = signal<gIF.on_off_actuator_t[]>([]);
 
     selUsed = {} as gIF.on_off_actuator_t;
     selFree = {} as gIF.on_off_actuator_t;
 
-    statIdx = 0;
-    usedIdx = 0;
-    freeIdx = 0;
-
     validStat = true;
 
-    constructor(
-        private modal: ModalService,
-        private events: EventsService,
-        private storage: StorageService,
-        private utils: UtilsService
-    ) {
-        // ---
+    storage = inject(StorageService);
+    utils = inject(UtilsService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
+         // ---
     }
 
     /***********************************************************************************************
-     * fn          ngAfterViewInit
+     * fn          ngOnInit
      *
      * brief
      *
      */
-     ngAfterViewInit(){
-        setTimeout(() => {
-            this.init();
-        }, 0);
-    }
+    ngAfterViewInit(){
 
-    /***********************************************************************************************
-     * fn          init
-     *
-     * brief
-     *
-     */
-    init() {
+        let attribs: gIF.hostedAttr_t[] = [...this.storage.attrMap().values()];
 
-        let attribs: gIF.hostedAttr_t[] = JSON.parse(JSON.stringify(Array.from(this.storage.attrMap.values())));
-
-        this.thermostats = [];
-        this.on_off_all = [];
-        this.on_off_used = [];
-        this.on_off_free = [];
+        const t_stats = [];
 
         for(const attr of attribs){
             if(attr.clusterID === gConst.CLUSTER_ID_MS_TEMPERATURE_MEASUREMENT){
@@ -122,7 +110,7 @@ export class EditStats implements AfterViewInit {
                     thermostat.workPoint = 20.0;
                     thermostat.actuators = [];
                 }
-                this.thermostats.push(thermostat);
+                t_stats.push(thermostat);
             }
             if(attr.clusterServer){
                 if(attr.clusterID === gConst.CLUSTER_ID_GEN_ON_OFF){
@@ -137,43 +125,43 @@ export class EditStats implements AfterViewInit {
                 }
             }
         }
+
         this.storage.delAllThermostat();
-        for(const thermostat of this.thermostats){
-            this.storage.storeThermostat(thermostat);
+
+        if(t_stats.length > 0){
+            this.validStat = true;
+            this.thermostats.set(t_stats);
+            for(const stat of t_stats){
+                this.storage.storeThermostat(stat);
+            }
         }
-        if(this.thermostats.length == 0){
+        else {
             this.validStat = false;
-            this.thermostats.push(gConst.invalidStat);
+            this.thermostats.set([
+                gConst.invalidStat
+            ]);
             this.on_off_all = [];
-            this.on_off_used = [];
-            this.on_off_free = [];
         }
-        this.selThermostat = this.thermostats[0];
-        this.statIdx = 0;
-        setTimeout(()=>{
-            this.statSelRef.nativeElement = `${this.statIdx}`;
-        }, 0);
-        this.setPointRef.nativeElement.value = `${this.selThermostat.setPoint}`;
-        this.setThermostatDesc(this.selThermostat);
-        this.setThermostat(this.selThermostat);
+        this.statSelect('0');
     }
 
     /***********************************************************************************************
-     * fn          setActuators
+     * fn          statSelected
      *
      * brief
      *
      */
-    setActuators(){
+    statSelect(idx: string){
 
-        if(this.on_off_used.length == 0){
-            this.on_off_used.push(gConst.dummyOnOff);
-        }
-        if(this.on_off_free.length == 0){
-            this.on_off_free.push(gConst.dummyOnOff);
-        }
-        this.setUsed(0);
-        this.setFree(0);
+        this.m_stat_sel.set(idx);
+
+        const i = parseInt(idx);
+        this.selThermostat = this.thermostats()[i];
+
+        this.setThermostat(this.selThermostat);
+        this.setThermostatDesc(this.selThermostat);
+
+        this.m_set_point.set(`${this.selThermostat.setPoint}`);
     }
 
     /***********************************************************************************************
@@ -198,8 +186,8 @@ export class EditStats implements AfterViewInit {
                 }
             }
         }
-        this.on_off_used = used_actuators;
-        this.on_off_free = free_actuators;
+        this.on_off_used.set(used_actuators);
+        this.on_off_free.set(free_actuators);
 
         this.setActuators();
         if(this.validStat == true){
@@ -208,21 +196,25 @@ export class EditStats implements AfterViewInit {
     }
 
     /***********************************************************************************************
-     * fn          statSelected
+     * fn          setActuators
      *
      * brief
      *
      */
-    statSelected(idx: string){
+    setActuators(){
 
-        const i = parseInt(idx);
-
-        this.statIdx = i;
-        this.selThermostat = this.thermostats[i];
-        this.setPointRef.nativeElement.value = `${this.selThermostat.setPoint}`;
-
-        this.setThermostatDesc(this.selThermostat);
-        this.setThermostat(this.selThermostat);
+        if(this.on_off_used().length == 0){
+            this.on_off_used.set([
+                gConst.dummyOnOff
+            ]);
+        }
+        if(this.on_off_free().length == 0){
+            this.on_off_free.set([
+                gConst.dummyOnOff
+            ]);
+        }
+        this.setUsed(0);
+        this.setFree(0);
     }
 
     /***********************************************************************************************
@@ -233,27 +225,25 @@ export class EditStats implements AfterViewInit {
      */
     onUsedSelect(idx: string){
 
-        const i = parseInt(idx);
+        this.m_used_sel.set(idx);
 
-        this.usedIdx = i;
-        this.selUsed = this.on_off_used[i];
+        const i = parseInt(idx);
+        this.selUsed = this.on_off_used()[i];
         this.setUsedDesc(this.selUsed);
     }
 
     /***********************************************************************************************
-     * fn          usedSelected
+     * fn          setUsed
      *
      * brief
      *
      */
     setUsed(idx: number){
 
-        this.usedIdx = idx;
-        this.selUsed = this.on_off_used[idx];
+        this.selUsed = this.on_off_used()[idx];
         this.setUsedDesc(this.selUsed);
-        setTimeout(()=>{
-            this.usedSelRef.nativeElement.value = `${idx}`;
-        }, 0);
+
+        this.m_used_sel.set(`${idx}`);
     }
 
     /***********************************************************************************************
@@ -264,27 +254,25 @@ export class EditStats implements AfterViewInit {
      */
     onFreeSelect(idx: string){
 
-        const i = parseInt(idx);
+        this.m_free_sel.set(idx);
 
-        this.freeIdx = i;
-        this.selFree = this.on_off_free[i];
+        const i = parseInt(idx);
+        this.selFree = this.on_off_free()[i];
         this.setFreeDesc(this.selFree);
     }
 
     /***********************************************************************************************
-     * fn          freeSelected
+     * fn          setFree
      *
      * brief
      *
      */
     setFree(idx: number){
 
-        this.freeIdx = idx;
-        this.selFree = this.on_off_free[idx];
+        this.selFree = this.on_off_free()[idx];
         this.setFreeDesc(this.selFree);
-        setTimeout(()=>{
-            this.freeSelRef.nativeElement.value = `${idx}`;
-        }, 0);
+
+        this.m_free_sel.set(`${idx}`);
     }
 
     /***********************************************************************************************
@@ -295,24 +283,26 @@ export class EditStats implements AfterViewInit {
      */
     setThermostatDesc(thermostat: gIF.thermostat_t){
 
-        this.thermostatDesc = [];
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(thermostat.partNum);
+        const desc_vals: gIF.descVal_t[] = [];
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(thermostat.partNum);
         if(partDesc){
             let descVal = {} as gIF.descVal_t;
             descVal.key = 'node:';
             descVal.value = partDesc.devName;
-            this.thermostatDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 'label:';
             descVal.value = partDesc.part;
-            this.thermostatDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 's/n:';
             descVal.value = this.utils.extToHex(thermostat.extAddr);
-            this.thermostatDesc.push(descVal);
+            desc_vals.push(descVal);
+
+            this.thermostatDesc.set(desc_vals);
         }
         else {
-            this.thermostatDesc = gConst.dummyDesc;
+            this.thermostatDesc.set(gConst.dummyDesc);
         }
     }
 
@@ -324,24 +314,26 @@ export class EditStats implements AfterViewInit {
      */
     setUsedDesc(onOff: gIF.on_off_actuator_t){
 
-        this.usedDesc = [];
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(onOff.partNum);
+        const desc_vals: gIF.descVal_t[] = [];
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(onOff.partNum);
         if(partDesc){
             let descVal = {} as gIF.descVal_t;
             descVal.key = 'node:';
             descVal.value = partDesc.devName;
-            this.usedDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 'label:';
             descVal.value = partDesc.part;
-            this.usedDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 's/n:';
             descVal.value = this.utils.extToHex(onOff.extAddr);
-            this.usedDesc.push(descVal);
+            desc_vals.push(descVal);
+
+            this.usedDesc.set(desc_vals);
         }
         else {
-            this.usedDesc = gConst.dummyDesc;
+            this.usedDesc.set(gConst.dummyDesc);
         }
     }
 
@@ -353,24 +345,26 @@ export class EditStats implements AfterViewInit {
      */
     setFreeDesc(onOff: gIF.on_off_actuator_t){
 
-        this.freeDesc = [];
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(onOff.partNum);
+        const desc_vals: gIF.descVal_t[] = [];
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(onOff.partNum);
         if(partDesc){
             let descVal = {} as gIF.descVal_t;
             descVal.key = 'node:';
             descVal.value = partDesc.devName;
-            this.freeDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 'label:';
             descVal.value = partDesc.part;
-            this.freeDesc.push(descVal);
+            desc_vals.push(descVal);
             descVal = {} as gIF.descVal_t;
             descVal.key = 's/n:';
             descVal.value = this.utils.extToHex(onOff.extAddr);
-            this.freeDesc.push(descVal);
+            desc_vals.push(descVal);
+
+            this.freeDesc.set(desc_vals);
         }
         else {
-            this.freeDesc = gConst.dummyDesc;
+            this.freeDesc.set(gConst.dummyDesc);
         }
     }
 
@@ -381,7 +375,7 @@ export class EditStats implements AfterViewInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -393,7 +387,7 @@ export class EditStats implements AfterViewInit {
     saveActuators(thermostat: gIF.thermostat_t, actuators: gIF.on_off_actuator_t[]) {
 
         thermostat.actuators = [];
-        if(this.on_off_used[0].valid == true){
+        if(this.on_off_used()[0].valid == true){
             for(const on_off of actuators){
                 const actuator = {} as gIF.thermostatActuator_t;
                 actuator.name = on_off.name;
@@ -413,18 +407,7 @@ export class EditStats implements AfterViewInit {
      */
     onSetPointChange(newVal: string){
 
-        let set_point = parseInt(newVal, 10);
-
-        if(Number.isNaN(set_point) || (set_point < this.minSetPoint)){
-            return;
-        }
-        if(set_point > this.maxSetPoint){
-            set_point = this.maxSetPoint;
-        }
-        console.log(`new set point: ${set_point}`);
-        this.selThermostat.setPoint = set_point;
-        this.storage.storeThermostat(this.selThermostat);
-        this.setPointRef.nativeElement.value = `${set_point}`;
+        this.m_set_point.set(newVal);
     }
 
     /***********************************************************************************************
@@ -433,13 +416,30 @@ export class EditStats implements AfterViewInit {
      * brief
      *
      */
-    onSetPointBlur(newVal: string){
+    onSetPointBlur(){
 
-        let set_point = parseInt(newVal);
+        let set_point = parseInt(this.m_set_point());
+
+        if(set_point == this.selThermostat.setPoint){
+            return;
+        }
 
         if(Number.isNaN(set_point) || (set_point < this.minSetPoint)){
-            this.setPointRef.nativeElement.value = `${this.selThermostat.setPoint}`;
+            this.m_set_point.set(`${this.selThermostat.setPoint}`);
+            return;
         }
+        if(set_point > this.maxSetPoint){
+            set_point = this.maxSetPoint;
+        }
+        console.log(`new set point: ${set_point}`);
+
+        this.selThermostat.setPoint = set_point;
+        this.thermostats.update((stats)=>{
+            return [...stats];
+        });
+        this.storage.storeThermostat(this.selThermostat);
+
+        this.m_set_point.set(`${set_point}`);
     }
 
     /***********************************************************************************************
@@ -450,52 +450,62 @@ export class EditStats implements AfterViewInit {
      */
     addActuator(){
 
-        if(this.on_off_free[0].valid == true){
-            const idx = this.freeIdx;
-            const act: gIF.on_off_actuator_t = this.on_off_free.splice(idx, 1)[0];
+        if(this.on_off_free()[0].valid == true){
+            const idx = parseInt(this.m_free_sel());
+            const act: gIF.on_off_actuator_t = this.on_off_free().splice(idx, 1)[0];
 
-            if(this.on_off_free.length == 0){
-                this.on_off_free.push(gConst.dummyOnOff);
+            if(this.on_off_free().length == 0){
+                this.on_off_free.set([
+                    gConst.dummyOnOff
+                ]);
             }
             this.setFree(0);
 
-            if(this.on_off_used[0].valid == false){
-                this.on_off_used = [];
+            if(this.on_off_used()[0].valid == false){
+                this.on_off_used.set([]);
             }
-            this.on_off_used.push(act);
+            this.on_off_used.update((used)=>{
+                used.push(act);
+                return [...used];
+            });
 
-            const lastIdx = this.on_off_used.length - 1;
+            const lastIdx = this.on_off_used().length - 1;
             this.setUsed(lastIdx);
 
-            this.saveActuators(this.selThermostat, this.on_off_used);
+            this.saveActuators(this.selThermostat, this.on_off_used());
         }
     }
 
     /***********************************************************************************************
-     * fn          addActuator
+     * fn          delActuator
      *
      * brief
      *
      */
     delActuator(){
 
-        if(this.on_off_used[0].valid == true){
-            const idx = this.usedIdx;
-            const act: gIF.on_off_actuator_t = this.on_off_used.splice(idx, 1)[0];
+        if(this.on_off_used()[0].valid == true){
+            const idx = parseInt(this.m_used_sel());
+            const act: gIF.on_off_actuator_t = this.on_off_used().splice(idx, 1)[0];
 
-            if(this.on_off_used.length == 0){
-                this.on_off_used.push(gConst.dummyOnOff);
+            if(this.on_off_used().length == 0){
+                this.on_off_used.set([
+                    gConst.dummyOnOff
+                ]);
             }
             this.setUsed(0);
 
-            if(this.on_off_free[0].valid == false){
-                this.on_off_free = [];
+            if(this.on_off_free()[0].valid == false){
+                this.on_off_free.set([]);
             }
-            this.on_off_free.push(act);
-            const lastIdx = this.on_off_free.length - 1;
+            this.on_off_free.update((free)=>{
+                free.push(act);
+                return [...free];
+            });
+            const lastIdx = this.on_off_free().length - 1;
             this.setFree(lastIdx);
 
-            this.saveActuators(this.selThermostat, this.on_off_used);
+            this.saveActuators(this.selThermostat, this.on_off_used());
         }
     }
 }

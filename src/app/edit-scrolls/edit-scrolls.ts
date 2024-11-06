@@ -1,13 +1,19 @@
 import {
     Component,
     ElementRef,
-    ViewChild,
     AfterViewInit,
-    HostBinding
+    viewChild,
+    inject,
+    signal,
+    ChangeDetectorRef,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
 
 import { CommonModule } from '@angular/common';
@@ -27,37 +33,35 @@ import * as gConst from '../gConst';
         CdkDragHandle
     ],
     templateUrl: './edit-scrolls.html',
-    styleUrls: ['./edit-scrolls.scss']
+    styleUrls: ['./edit-scrolls.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EditScrolls implements AfterViewInit {
 
-    @ViewChild('scrollName') scrollNameRef!: ElementRef;
-    @ViewChild('scrollSel') scrollSelRef!: ElementRef;
-    @ViewChild('yPos') yPosRef!: ElementRef;
-
-    @HostBinding('attr.id') hostID = 'scrolls-dlg';
+    hostID = 'scrolls-dlg';
 
     minPos = 0;
     maxPos = 100;
     maxNameLen = 16;
 
-    scroll_name = '';
-    scroll_idx = 0;
-    y_pos = 0;
+    m_scroll_sel = signal('0');
+    m_scroll_name = signal('');
+    m_y_pos = signal('0');
 
-    allScrolls: gIF.scroll_t[] = [];
+    allScrolls = signal<gIF.scroll_t[]>([]);
     selScroll = {} as gIF.scroll_t;
 
     newIdx: number = 0;
 
-    constructor(
-        private modal: ModalService,
-        private events: EventsService,
-        private storage: StorageService
-    ) {
-        //this.modal.dlgData.scrolls.splice(0, 1);
-        this.allScrolls = JSON.parse(JSON.stringify(this.modal.dlgData.scrolls));
-        this.allScrolls.splice(0, 1);
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
+        // ---
     }
 
     /***********************************************************************************************
@@ -67,8 +71,14 @@ export class EditScrolls implements AfterViewInit {
      *
      */
     ngAfterViewInit(): void {
+
+        //const all_scrolls = JSON.parse(JSON.stringify(this.storage.scrolls()));
+        const all_scrolls = [...this.storage.scrolls()];
+        all_scrolls.splice(0, 1);
+        this.allScrolls.set(all_scrolls);
+
         setTimeout(() => {
-            if(this.allScrolls.length == 0){
+            if(this.allScrolls().length == 0){
                 this.addScroll();
             }
             else {
@@ -84,8 +94,11 @@ export class EditScrolls implements AfterViewInit {
      *
      */
     onScrollSelected(idx: string){
-        this.scroll_idx = parseInt(idx);
-        this.scrollSelect(this.scroll_idx);
+
+        console.log(`sel idx: ${idx}`);
+
+        const i = parseInt(idx);
+        this.scrollSelect(i);
     }
 
     /***********************************************************************************************
@@ -96,13 +109,11 @@ export class EditScrolls implements AfterViewInit {
      */
     scrollSelect(idx: number){
 
-        this.selScroll = this.allScrolls[idx];
-        this.scroll_name = this.selScroll.name;
-        this.scroll_idx = idx;
+        this.selScroll = this.allScrolls()[idx];
 
-        this.scrollSelRef.nativeElement.value = `${this.scroll_idx}`;
-        this.scrollNameRef.nativeElement.value = this.selScroll.name
-        this.yPosRef.nativeElement.value = `${this.selScroll.yPos}`;
+        this.m_scroll_sel.set(`${idx}`);
+        this.m_scroll_name.set(this.selScroll.name);
+        this.m_y_pos.set(`${this.selScroll.yPos}`);
 
         this.yPosSet(this.selScroll.yPos);
     }
@@ -115,18 +126,7 @@ export class EditScrolls implements AfterViewInit {
      */
     onNameChange(newName: string){
 
-        console.log(`new val: ${newName}`);
-
-        const nameLen = newName.length;
-        if(newName == '') {
-            return;
-        }
-        if(nameLen > this.maxNameLen){
-            this.scrollNameRef.nativeElement.value = this.scroll_name;
-            return;
-        }
-        this.scroll_name = newName;
-        this.selScroll.name = newName
+        this.m_scroll_name.set(newName);
     }
 
     /***********************************************************************************************
@@ -135,13 +135,22 @@ export class EditScrolls implements AfterViewInit {
      * @brief
      *
      */
-    onNameBlur(newName: string){
+    onNameBlur(){
 
-        console.log(`name blur: ${newName}`);
-
-        if(newName == '') {
-            this.scrollNameRef.nativeElement.value = this.scroll_name;
+        if(this.m_scroll_name() == ''){
+            this.m_scroll_name.set(this.selScroll.name);
+            return;
         }
+        const nameLen = this.m_scroll_name().length;
+        if(nameLen > this.maxNameLen){
+            this.m_scroll_name.set(this.selScroll.name);
+            return;
+        }
+
+        this.selScroll.name = this.m_scroll_name();
+        this.storage.scrolls.update((scrolls)=>{
+            return [...scrolls];
+        });
     }
 
     /***********************************************************************************************
@@ -152,18 +161,17 @@ export class EditScrolls implements AfterViewInit {
      */
     onPosChange(newVal: string){
 
-        let new_pos = parseInt(newVal, 10);
+        let pos = parseInt(newVal);
 
-        if(Number.isNaN(new_pos ) || (new_pos  < this.minPos)){
-            return;
+        if(Number.isNaN(pos) || (pos < this.minPos)){
+            pos = this.minPos;
         }
-        if(new_pos  > this.maxPos){
-            new_pos = this.maxPos;
+        if(pos > this.maxPos){
+            pos = this.maxPos;
         }
-        console.log(`new set pos: ${new_pos}`);
-        this.selScroll.yPos = new_pos ;
-        this.y_pos = new_pos;
-        this.yPosSet(new_pos);
+        this.yPosSet(pos);
+
+        this.m_y_pos.set(newVal);
     }
 
     /***********************************************************************************************
@@ -172,13 +180,26 @@ export class EditScrolls implements AfterViewInit {
      * brief
      *
      */
-    onPosBlur(newVal: string){
+    onPosBlur(){
 
-        let set_point = parseInt(newVal);
+        let pos = parseInt(this.m_y_pos());
 
-        if(Number.isNaN(set_point) || (set_point < this.minPos)){
-            this.yPosRef.nativeElement.value = `${this.selScroll.yPos}`;
+        if(Number.isNaN(pos) || (pos < this.minPos)){
+            this.m_y_pos.set(`${this.selScroll.yPos}`);
+            return;
         }
+        if(pos > this.maxPos){
+            pos = this.maxPos;
+            this.m_y_pos.set(`${pos}`);
+        }
+        console.log(`new set pos: ${pos}`);
+
+        this.selScroll.yPos = pos;
+        this.storage.scrolls.update((scrolls)=>{
+            return [...scrolls];
+        });
+
+        this.yPosSet(pos);
     }
 
     /***********************************************************************************************
@@ -196,8 +217,8 @@ export class EditScrolls implements AfterViewInit {
             return;
         }
 
-        this.modal.dlgData.containerRef.scrollTo({
-            top: pos * this.modal.dlgData.imgDim.height / 100,
+        this.dlgData.containerRef.scrollTo({
+            top: pos * this.dlgData.imgDim.height / 100,
             left: 0,
             behavior: 'smooth'
         });
@@ -216,9 +237,12 @@ export class EditScrolls implements AfterViewInit {
             name: `new_${this.newIdx}`,
             yPos: 0
         }
-        this.allScrolls.push(scroll);
+        this.allScrolls.update((scrolls)=>{
+            scrolls.push(scroll);
+            return [...scrolls];
+        });
         setTimeout(()=>{
-            const lastIdx = this.allScrolls.length - 1;
+            const lastIdx = this.allScrolls().length - 1;
             this.scrollSelect(lastIdx);
         }, 0);
     }
@@ -230,13 +254,15 @@ export class EditScrolls implements AfterViewInit {
      */
     delScroll(){
 
-        if(this.allScrolls.length == 1){
+        if(this.allScrolls().length == 1){
             return;
         }
-        //const i = parseInt(this.scrollIdx);
-        const i = parseInt(this.scrollSelRef.nativeElement.value);
+        const i = parseInt(this.m_scroll_sel());
 
-        this.allScrolls.splice(i, 1);
+        this.allScrolls.update((scrolls)=>{
+            scrolls.splice(i, 1);
+            return [...scrolls];
+        });
         setTimeout(()=>{
             this.scrollSelect(0);
         }, 0);
@@ -250,8 +276,29 @@ export class EditScrolls implements AfterViewInit {
      */
     save() {
 
-        this.events.publish('scrollDlgEvt', this.allScrolls);
-        this.modal.closeDlg();
+        const scroll_map = new Map<string, number>([
+            [gConst.dumyScroll.name, gConst.dumyScroll.yPos]
+        ]);
+        let len = this.allScrolls().length;
+        // remove name duplicates
+        if(len){
+            for(let i = 0; i < len; i++){
+                scroll_map.set(this.allScrolls()[i].name, this.allScrolls()[i].yPos);
+            }
+        }
+        const scrolls: gIF.scroll_t[] = [];
+        scroll_map.forEach((yPos, name)=>{
+            const scroll = {} as gIF.scroll_t;
+            scroll.name = name;
+            scroll.yPos = yPos;
+            scrolls.push(scroll);
+        });
+        this.allScrolls.set(scrolls);
+
+        this.storage.scrolls.set(this.allScrolls());
+        this.storage.setScrolls(this.allScrolls());
+
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -261,7 +308,7 @@ export class EditScrolls implements AfterViewInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
 }

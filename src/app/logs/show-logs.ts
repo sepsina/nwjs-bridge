@@ -1,14 +1,15 @@
 import {
     Component,
-    OnInit,
     ElementRef,
-    ViewChild,
     AfterViewInit,
-    HostBinding
+    viewChild,
+    inject,
+    effect,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import { DialogRef } from '@angular/cdk/dialog';
+
 import { UtilsService } from '../services/utils.service';
 
 import { CommonModule } from '@angular/common';
@@ -28,36 +29,31 @@ import * as gIF from '../gIF'
         CdkDragHandle
     ],
     templateUrl: './show-logs.html',
-    styleUrls: ['./show-logs.scss']
+    styleUrls: ['./show-logs.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ShowLogs implements OnInit, AfterViewInit{
+export class ShowLogs implements AfterViewInit{
 
-    @ViewChild('cbScroll') cbScroll!: ElementRef;
-    @ViewChild('logList') logList!: ElementRef;
+    hostID = 'logs-dlg';
 
-    @HostBinding('attr.id') hostID = 'logs-dlg';
+    cbScroll = viewChild.required('cbScroll', {read: ElementRef});
+    logList = viewChild.required('logList', {read: ElementRef});
 
-    constructor(
-        private modal: ModalService,
-        private events: EventsService,
-        public utils: UtilsService
-    ) {
+    utils = inject(UtilsService);
+    dialogRef = inject(DialogRef);
+
+    new_log = effect(()=>{
+        const logs = this.utils.msgLogs();
+        if(this.cbScroll().nativeElement.checked) {
+            this.logList().nativeElement().scrollTop = this.logList().nativeElement.scrollHeight;
+        }
+    });
+
+    constructor() {
         // ---
-    }
-
-    /***********************************************************************************************
-     * @fn          ngOnInit
-     *
-     * @brief
-     *
-     */
-    ngOnInit(): void {
-
-        this.events.subscribe('logMsg', (msg: gIF.msgLogs_t)=>{
-            if(this.cbScroll.nativeElement.checked) {
-                this.logList.nativeElement.scrollTop = this.logList.nativeElement.scrollHeight;
-            }
-        });
     }
 
     /***********************************************************************************************
@@ -67,18 +63,9 @@ export class ShowLogs implements OnInit, AfterViewInit{
      *
      */
     ngAfterViewInit(): void {
-        this.cbScroll.nativeElement.checked = false;
+        this.cbScroll().nativeElement.checked = false;
     }
 
-    /***********************************************************************************************
-     * @fn          save
-     *
-     * @brief
-     *
-     */
-    save() {
-        this.modal.closeDlg();
-    }
     /***********************************************************************************************
      * @fn          close
      *
@@ -86,7 +73,7 @@ export class ShowLogs implements OnInit, AfterViewInit{
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -96,9 +83,8 @@ export class ShowLogs implements OnInit, AfterViewInit{
      *
      */
     autoScrollChange() {
-
-        if(this.cbScroll.nativeElement.checked) {
-            this.logList.nativeElement.scrollTop = this.logList.nativeElement.scrollHeight;
+        if(this.cbScroll().nativeElement.checked) {
+            this.logList().nativeElement.scrollTop = this.logList().nativeElement.scrollHeight;
         }
     }
 
@@ -109,7 +95,7 @@ export class ShowLogs implements OnInit, AfterViewInit{
      *
      */
     clearLogs() {
-        this.utils.msgLogs = [];
+        this.utils.msgLogs.set([]);
     }
 
 }

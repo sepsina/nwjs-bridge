@@ -1,14 +1,19 @@
 import {
     Component,
-    ViewChild,
     ElementRef,
     AfterViewInit,
-    HostBinding,
-    OnInit
+    OnInit,
+    viewChild,
+    inject,
+    signal,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
-import { EventsService } from '../services/events.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
 
 import { CommonModule } from '@angular/common';
@@ -30,79 +35,37 @@ import * as gIF from '../gIF'
     ],
     templateUrl: './set-corr.html',
     styleUrls: ['./set-corr.scss'],
+    host: {
+        '[attr.id]': 'hostID'
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SetCorr implements AfterViewInit, OnInit {
+export class SetCorr implements AfterViewInit {
 
-    @ViewChild('unitSel') unitSelRef!: ElementRef;
-    @ViewChild('offset') offsetRef!: ElementRef;
+    hostID = 'corr-dlg';
 
-    @HostBinding('attr.id') hostID = 'corr-dlg';
+    offsetRef = viewChild.required('offset', {read: ElementRef});
 
-    allUnits: any[] = [];
-    selUnit: any;
+    allUnits = signal<gIF.units_t[]>([]);
+    selUnit = {} as gIF.units_t;
     unitIdx = '';
     prevIdx = 0;
-    title = 'unset';
-
+    title = signal('');
 
     valCorr = {} as gIF.valCorr_t;
     attr = {} as gIF.hostedAttr_t;
 
-    hasUnits = false;
-    unitSel: any[] = [];
+    m_unit_sel = signal('');
+    m_offset = signal('');
 
-    offsetVal = 0;
+    offset = 0;
 
-    constructor(
-        private modal: ModalService,
-        public events: EventsService,
-        public storage: StorageService
-    ) {
-        this.attr = this.modal.dlgData.keyVal.value;
-        this.title = this.attr.name;
-    }
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
 
-    /***********************************************************************************************
-     * @fn          ngOnInit
-     *
-     * @brief
-     *
-     */
-    ngOnInit(): void {
-
-        this.valCorr = JSON.parse(JSON.stringify(this.attr.valCorr));
-        this.offsetVal = this.valCorr.offset; // degC
-
-        switch(this.attr.clusterID){
-            case gConst.CLUSTER_ID_MS_TEMPERATURE_MEASUREMENT: {
-                this.hasUnits = true;
-                this.allUnits.push({name: 'degC', units: gConst.DEG_C});
-                this.allUnits.push({name: 'degF', units: gConst.DEG_F});
-                if(this.attr.valCorr.units == gConst.DEG_F){
-                    this.prevIdx = 1;
-                    this.unitIdx = '1';
-                    this.selUnit = this.allUnits[1];
-                    this.offsetVal = this.offsetVal * 9.0 / 5.0; // degC to degF
-                }
-                if(this.attr.valCorr.units == gConst.DEG_C){
-                    this.prevIdx = 0;
-                    this.unitIdx = '0';
-                    this.selUnit = this.allUnits[0];
-                }
-                this.offsetVal = Math.round(this.offsetVal * 10) / 10;
-                break;
-            }
-            case gConst.CLUSTER_ID_MS_RH_MEASUREMENT: {
-                this.hasUnits = true;
-                this.allUnits.push({name: '%', units: gConst.RH_UNIT});
-
-                this.unitIdx = '0';
-                this.selUnit = this.allUnits[0];
-
-                this.offsetVal = Math.round(this.offsetVal * 10) / 10;
-                break;
-            }
-        }
+    constructor() {
+        // ---
     }
 
     /***********************************************************************************************
@@ -113,13 +76,51 @@ export class SetCorr implements AfterViewInit, OnInit {
      */
     ngAfterViewInit(): void {
 
-        setTimeout(() => {
-            this.offsetRef.nativeElement.value = `${this.offsetVal}`
-            this.unitSelRef.nativeElement.value = this.unitIdx;
+        this.attr = this.dlgData.keyVal.value;
+        this.title.set(this.attr.name);
 
-            this.offsetRef.nativeElement.focus();
-            this.offsetRef.nativeElement.select();
-        }, 100);
+        this.valCorr = {...this.attr.valCorr};
+        let offset = this.valCorr.offset; // degC
+
+        switch(this.attr.clusterID){
+            case gConst.CLUSTER_ID_MS_TEMPERATURE_MEASUREMENT: {
+                const units = [
+                    {name: 'degC', units: gConst.DEG_C},
+                    {name: 'degF', units: gConst.DEG_F}
+                ];
+                this.allUnits.set(units);
+                if(this.attr.valCorr.units == gConst.DEG_F){
+                    this.prevIdx = 1;
+                    this.unitIdx = '1';
+                    this.selUnit = this.allUnits()[1];
+                    offset = offset * 9.0 / 5.0; // degC to degF
+                    offset = Math.round(offset * 10) / 10;
+                }
+                if(this.attr.valCorr.units == gConst.DEG_C){
+                    this.prevIdx = 0;
+                    this.unitIdx = '0';
+                    this.selUnit = this.allUnits()[0];
+                }
+                break;
+            }
+            case gConst.CLUSTER_ID_MS_RH_MEASUREMENT: {
+                const units = [
+                    {name: '%', units: gConst.RH_UNIT}
+                ];
+                this.allUnits.set(units);
+                this.unitIdx = '0';
+                this.selUnit = this.allUnits()[0];
+                break;
+            }
+        }
+        this.offset = offset;
+        this.m_offset.set(`${offset}`);
+        this.m_unit_sel.set(this.unitIdx);
+
+        setTimeout(() => {
+            this.offsetRef().nativeElement.focus();
+            this.offsetRef().nativeElement.select();
+        }, 0);
     }
 
     /***********************************************************************************************
@@ -130,18 +131,20 @@ export class SetCorr implements AfterViewInit, OnInit {
      */
     async save() {
 
+        let offset = parseFloat(this.m_offset());
+
         if(this.selUnit.units == gConst.DEG_F){
-            this.offsetVal = this.offsetVal * 5.0 / 9.0; // degF to degC
-            this.offsetVal = Math.round(this.offsetVal * 10) / 10;
+            offset = offset * 5.0 / 9.0; // degF to degC
+            offset = Math.round(offset * 10) / 10;
         }
 
         this.valCorr.units = this.selUnit.units;
-        this.valCorr.offset = this.offsetVal;
+        this.valCorr.offset = offset;
 
         console.log(this.valCorr);
 
-        this.storage.setAttrCorr(this.valCorr, this.modal.dlgData.keyVal);
-        this.modal.closeDlg();
+        this.storage.setAttrCorr(this.valCorr, this.dlgData.keyVal);
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -151,36 +154,39 @@ export class SetCorr implements AfterViewInit, OnInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
-     * @fn          unitSelected
+     * @fn          unitSelect
      *
      * @brief
      *
      */
-    unitSelected(idx: string){
+    unitSelect(idx: string){
+
+        this.m_unit_sel.set(idx);
 
         const i = parseInt(idx);
-
-        this.selUnit = this.allUnits[i];
-        const prevUnits = this.allUnits[this.prevIdx];
+        this.selUnit = this.allUnits()[i];
+        const prevUnits = this.allUnits()[this.prevIdx];
         this.prevIdx = i;
+        let offset = parseFloat(this.m_offset());
 
         if(this.selUnit.units == gConst.DEG_F){
             if(prevUnits.units == gConst.DEG_C){
-                this.offsetVal = this.offsetVal * 9.0 / 5.0; // degC to degF
-                this.offsetVal = Math.round(this.offsetVal * 10) / 10;
+                offset = offset * 9.0 / 5.0; // degC to degF
+                offset = Math.round(offset * 10) / 10;
             }
         }
         if(this.selUnit.units == gConst.DEG_C){
             if(prevUnits.units == gConst.DEG_F){
-                this.offsetVal = this.offsetVal * 5.0 / 9.0; // degF to degC
-                this.offsetVal = Math.round(this.offsetVal * 10) / 10;
+                offset = offset * 5.0 / 9.0; // degF to degC
+                offset = Math.round(offset * 10) / 10;
             }
         }
-        this.offsetRef.nativeElement.value = `${this.offsetVal}`
+        this.offset = offset;
+        this.m_offset.set(`${offset}`);
     }
 
      /***********************************************************************************************
@@ -191,16 +197,7 @@ export class SetCorr implements AfterViewInit, OnInit {
      */
     onOffsetChange(newVal: string){
 
-        let offset = parseFloat(newVal);
-
-        if(Number.isNaN(offset)){
-            return;
-        }
-        offset = Math.round(offset * 10) / 10;
-        this.offsetRef.nativeElement.value = `${offset}`;
-        console.log(`new offset: ${offset}`);
-
-        this.offsetVal = offset;
+        this.m_offset.set(newVal);
     }
 
     /***********************************************************************************************
@@ -209,13 +206,19 @@ export class SetCorr implements AfterViewInit, OnInit {
      * brief
      *
      */
-    onOffsetBlur(newVal: string){
+    onOffsetBlur(){
 
-        let offset = parseInt(newVal);
+        let offset = parseFloat(this.m_offset());
 
         if(Number.isNaN(offset)){
-            this.offsetRef.nativeElement.value = `${this.offsetVal}`;
+            this.m_offset.set(`${this.offset}`);
+            return;
         }
+        offset = Math.round(offset * 10) / 10;
+        console.log(`new offset: ${offset}`);
+        this.offset = offset;
+
+        this.m_offset.set(`${offset}`);
     }
 
 

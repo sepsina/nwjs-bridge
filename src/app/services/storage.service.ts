@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, effect, signal } from '@angular/core';
 
 //import * as gConst from './gConst';
 import * as gIF from '../gIF';
@@ -13,11 +13,23 @@ const THERMOSTAT = 'thermostat';
 })
 export class StorageService {
 
-    attrMap = new Map();
+    scrolls = signal<gIF.scroll_t[]>([
+        gConst.dumyScroll
+    ]);
+
+    attrMap = signal(new Map());
     bindsMap = new Map();
 
     nvAttrMap = new Map();
     nvBindsMap = new Map();
+
+    attrSet = signal({} as gIF.attrSet_t);
+    zclCmd = signal({} as gIF.udpZclReq_t);
+    zclRsp = signal({} as gIF.udpZclRsp_t);
+    wrBind = signal({} as gIF.hostedBind_t);
+
+    chartData = signal({} as gIF.hostedAttr_t);
+    tempEvent = signal({} as gIF.tempEvent_t);
 
     nvThermostatsMap = new Map();
 
@@ -66,7 +78,7 @@ export class StorageService {
      * brief
      *
      */
-    setAttrName(name: string, keyVal: gIF.keyVal_t): gIF.nvAttr_t {
+    setAttrName(name: string, keyVal: gIF.keyVal_t) {
 
         const key = keyVal.key;
         const attr = keyVal.value;
@@ -80,8 +92,6 @@ export class StorageService {
         localStorage.setItem(key, JSON.stringify(nvAttr));
         attr.name = name;
         this.nvAttrMap.set(key, nvAttr);
-
-        return nvAttr;
     }
 
     /***********************************************************************************************
@@ -90,7 +100,7 @@ export class StorageService {
      * brief
      *
      */
-    setAttrStyle(style: gIF.ngStyle_t, keyVal: gIF.keyVal_t): gIF.nvAttr_t {
+    setAttrStyle(style: gIF.ngStyle_t, keyVal: gIF.keyVal_t) {
 
         const key = keyVal.key;
         const attr = keyVal.value;
@@ -104,8 +114,6 @@ export class StorageService {
         localStorage.setItem(key, JSON.stringify(nvAttr));
         attr.style = style;
         this.nvAttrMap.set(key, nvAttr);
-
-        return nvAttr;
     }
 
     /***********************************************************************************************
@@ -114,7 +122,7 @@ export class StorageService {
      * brief
      *
      */
-    setAttrCorr(valCorr: gIF.valCorr_t, keyVal: gIF.keyVal_t): gIF.nvAttr_t {
+    setAttrCorr(valCorr: gIF.valCorr_t, keyVal: gIF.keyVal_t) {
 
         const key = keyVal.key;
         const attr: gIF.hostedAttr_t = keyVal.value;
@@ -128,8 +136,6 @@ export class StorageService {
         localStorage.setItem(key, JSON.stringify(nvAttr));
         attr.valCorr = valCorr;
         this.nvAttrMap.set(key, nvAttr);
-
-        return nvAttr;
     }
 
     /***********************************************************************************************
@@ -152,6 +158,9 @@ export class StorageService {
         localStorage.setItem(key, JSON.stringify(nvAttr));
 
         attr.pos = pos;
+        this.attrMap.update((map)=>{
+            return new Map(map);
+        });
     }
 
     /***********************************************************************************************
@@ -166,10 +175,12 @@ export class StorageService {
 
         localStorage.removeItem(key);
 
-        this.attrMap.delete(key);
-        this.nvAttrMap.delete(key);
+        this.attrMap.update((map)=>{
+            map.delete(key);
+            return new Map(map);
+        });
 
-        return key;
+        this.nvAttrMap.delete(key);
     }
 
     /***********************************************************************************************
@@ -193,27 +204,6 @@ export class StorageService {
             key[i] = this.txBuf[i].toString(16);
         }
         return `${ATTR}-${key.join('')}`;
-
-        /*
-        const len = 8 + 1 + 2 + 2 + 2;
-        let i = 0;
-        let ab = new ArrayBuffer(len);
-        let dv = new DataView(ab);
-        dv.setFloat64(i, params.extAddr, gConst.LE);
-        i += 8;
-        dv.setUint8(i++, params.endPoint);
-        dv.setUint16(i, params.clusterID, gConst.LE);
-        i += 2;
-        dv.setUint16(i, params.attrSetID, gConst.LE);
-        i += 2;
-        dv.setUint16(i, params.attrID, gConst.LE);
-        i += 2;
-        let key = [];
-        for (let i = 0; i < len; i++) {
-            key[i] = dv.getUint8(i).toString(16);
-        }
-        return `${ATTR}-${key.join('')}`;
-        */
     }
 
     /***********************************************************************************************
@@ -249,8 +239,6 @@ export class StorageService {
 
         this.bindsMap.delete(key);
         this.nvBindsMap.delete(key);
-
-        return key;
     }
 
     /***********************************************************************************************
@@ -272,22 +260,6 @@ export class StorageService {
             key[i] = this.txBuf[i].toString(16);
         }
         return `${BIND}-${key.join('')}`;
-        /*
-        const len = 8 + 1 + 2;
-        let i = 0;
-        let ab = new ArrayBuffer(len);
-        let dv = new DataView(ab);
-        dv.setFloat64(i, bind.extAddr, gConst.LE);
-        i += 8;
-        dv.setUint8(i++, bind.srcEP);
-        dv.setUint16(i, bind.clusterID, gConst.LE);
-        i += 2;
-        let key = [];
-        for (let i = 0; i < len; i++) {
-            key[i] = dv.getUint8(i).toString(16);
-        }
-        return `${BIND}-${key.join('')}`;
-        */
     }
 
     /***********************************************************************************************
@@ -310,51 +282,6 @@ export class StorageService {
     }
 
     /***********************************************************************************************
-     * fn          setPublicIP
-     *
-     * brief
-     *
-     */
-    setPublicIP(ip: string) {
-        localStorage.setItem('public-ip', ip);
-    }
-    /***********************************************************************************************
-     * fn          getPublicIP
-     *
-     * brief
-     *
-     */
-    getPublicIP(): string {
-        return (localStorage.getItem('public-ip') || '');
-    }
-
-    /***********************************************************************************************
-     * fn          setFreeDNS
-     *
-     * brief
-     *
-     */
-    setFreeDNS(dns: gIF.dns_t) {
-        localStorage.setItem('free-dns', JSON.stringify(dns));
-    }
-    /***********************************************************************************************
-     * fn          getFreeDNS
-     *
-     * brief
-     *
-     */
-    getFreeDNS(): gIF.dns_t {
-
-        const dns = localStorage.getItem('free-dns');
-
-        if(dns) {
-            return JSON.parse(dns);
-        }
-
-        return <gIF.dns_t>{};
-    }
-
-    /***********************************************************************************************
      * fn          thermostatKey
      *
      * brief
@@ -372,21 +299,6 @@ export class StorageService {
             key[i] = this.txBuf[i].toString(16);
         }
         return `${THERMOSTAT}-${key.join('')}`;
-        /*
-        const len = 8 + 1;
-        let i = 0;
-        let ab = new ArrayBuffer(len);
-        let dv = new DataView(ab);
-        dv.setFloat64(i, extAddr, gConst.LE);
-        i += 8;
-        dv.setUint8(i++, endPoint);
-        let key = [];
-        for (let i = 0; i < len; i++) {
-            key[i] = dv.getUint8(i).toString(16);
-        }
-        return `${THERMOSTAT}-${key.join('')}`;
-        */
-
     }
 
     /***********************************************************************************************

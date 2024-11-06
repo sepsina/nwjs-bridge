@@ -21,9 +21,8 @@
         </div>
         <div id="plan-container" #containerRef>
             <div id="floor-plan" #floorPlanRef resizeObserver (resize)="onResize($event)">
-                @for(keyVal of storage.attrMap | keyvalue; track keyVal.key){
-                    <div
-                        #attrRef
+                @for(keyVal of storage.attrMap()| keyvalue; track keyVal.key){
+                    <div #attrRef
                         class="attr"
                         [ngStyle]="getAttrStyle(keyVal)"
                         cdkDrag
@@ -51,12 +50,12 @@
                 (click)="dragChanged()">
         </div>
         <div class="row-right" id="footStat">
-            {{footerStatus}}
+            {{footerStatus()}}
         </div>
         <select
             #scrollSel
             (change)="scrollSelChange(scrollSel.value)">
-            @for(scroll of scrolls; track scroll.name; let i = $index){
+            @for(scroll of storage.scrolls(); track scroll.name; let i = $index){
                 <option value="{{i}}">
                     {{scroll.name}}
                 </option>
@@ -117,7 +116,7 @@
             </button>
         }
         @else {
-            @for(scroll of scrolls; track scroll; let i = $index ){
+            @for(scroll of storage.scrolls(); track scroll.name; let i = $index ){
                 @if(i == 0){
                     <button
                         cdkMenuItem

@@ -1,6 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, effect, inject } from '@angular/core';
 import { Globals } from './globals';
-import { EventsService } from './events.service';
+import { StorageService } from './storage.service';
 
 import * as gConst from '../gConst';
 import * as gIF from '../gIF';
@@ -20,10 +20,17 @@ export class UdpService {
     txBuf = new Uint8Array(1024);
     rwBuf = new gIF.rwBuf_t();
 
-    constructor(
-        private events: EventsService,
-        private globs: Globals,
-    ) {
+    zcl_rsp = effect(()=>{
+        const rsp = this.storage.zclRsp();
+        if(rsp.ip){
+            this.zclRsp(rsp);
+        }
+    });
+
+    storage = inject(StorageService);
+    globs = inject(Globals);
+
+    constructor() {
         this.dgram = window.nw.require('dgram');
         this.udpSocket = this.dgram.createSocket('udp4');
         this.udpSocket.on('message', (msg: any, rinfo: any)=>{
@@ -38,10 +45,6 @@ export class UdpService {
         });
         this.udpSocket.bind(UDP_PORT, ()=>{
             this.udpSocket.setBroadcast(true);
-        });
-
-        this.events.subscribe('zcl_rsp', (rsp)=>{
-            this.zclRsp(rsp);
         });
 
         this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
@@ -243,7 +246,7 @@ export class UdpService {
                 for(let i = 0; i < zclCmd.cmdLen; i++) {
                     zclCmd.cmd[i] = this.rwBuf.read_uint8();
                 }
-                this.events.publish('zcl_cmd', zclCmd);
+                this.storage.zclCmd.set(zclCmd);
                 break;
             }
             default:

@@ -1,14 +1,21 @@
 import {
     Component,
-    ViewChild,
     ElementRef,
     AfterViewInit,
-    HostBinding
+    viewChild,
+    inject,
+    signal,
+    ChangeDetectorRef,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
-import { EventsService } from '../services/events.service';
+import { UtilsService } from '../services/utils.service';
 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -28,27 +35,21 @@ import * as gIF from '../gIF'
     ],
     templateUrl: './set-styles.html',
     styleUrls: ['./set-styles.scss'],
+    host: {
+        '[attr.id]': 'hostID'
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SetStyles implements AfterViewInit {
 
-    @HostBinding('attr.id') hostID = 'styles-dlg';
+    hostID = 'styles-dlg';
 
-    @ViewChild('testView') testView!: ElementRef;
+    testView = viewChild.required('testView', {read: ElementRef});
+    fontSizeRef = viewChild.required('attrFontSize', {read: ElementRef});
 
-    @ViewChild('attrColor') attrColor!: ElementRef;
-    @ViewChild('attrFontSize') fontSizeRef!: ElementRef;
-
-    @ViewChild('attrBorderWidth') borderWidthRef!: ElementRef;
-    @ViewChild('attrBorderRadius') borderRadiusRef!: ElementRef;
-
-    @ViewChild('attrPaddingTop') paddingTopRef!: ElementRef;
-    @ViewChild('attrPaddingRight') paddingRightRef!: ElementRef;
-    @ViewChild('attrPaddingBottom') paddingBottomRef!: ElementRef;
-    @ViewChild('attrPaddingLeft') paddingLeftRef!: ElementRef;
-
-    dlg_title = '';
+    dlg_title = signal('');
     testEl = {} as HTMLElement;
-    test_text = '';
+    test_text = signal('');
 
     minFontSize = 5
     maxFontSize = 50;
@@ -59,18 +60,33 @@ export class SetStyles implements AfterViewInit {
     maxPaddingBottom = 20;
     maxPaddingLeft = 20;
 
+    m_font_size = signal('');
+    m_color = signal('#ffffff');
+    m_bg_color = signal('#ffffff');
+    m_opacity = signal('');
+    m_border_color = signal('#ffffff');
+    m_border_width = signal('');
+    m_border_radius = signal('');
+    m_border_style = signal('');
+    m_padding_top = signal('');
+    m_padding_left = signal('');
+    m_padding_right = signal('');
+    m_padding_bottom = signal('');
+
     borderStyles = gConst.BORDER_STYLES;
     style = {} as gIF.ngStyle_t;
 
-    constructor(
-        public modal: ModalService,
-        public events: EventsService,
-        public storage: StorageService
-    ) {
+    storage = inject(StorageService);
+    utils = inject(UtilsService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    selAttr = {} as gIF.hostedAttr_t;
+
+    constructor() {
         // copy style
-        this.style = JSON.parse(JSON.stringify(this.modal.dlgData.keyVal.value.style));
-        this.test_text = this.modal.dlgData.keyVal.value.formatedVal;
-        this.dlg_title = this.modal.dlgData.keyVal.value.name;
+        this.selAttr = this.dlgData.keyVal.value;
+        this.style = {...this.selAttr.style};
     }
     /***********************************************************************************************
      * fn          ngAfterViewInit
@@ -80,10 +96,13 @@ export class SetStyles implements AfterViewInit {
      */
     ngAfterViewInit(): void {
 
-        this.testEl = this.testView.nativeElement;
+        this.test_text.set(this.selAttr.formatedVal);
+        this.dlg_title.set(this.selAttr.name);
 
-        this.testEl.style.color = this.style.color
-        const rgba = this.hexToRGB(this.style.bgColor, this.style.bgOpacity);
+        this.testEl = this.testView().nativeElement;
+
+        this.testEl.style.color = this.style.color;
+        const rgba = this.utils.hexToRGB(this.style.bgColor, this.style.bgOpacity);
         this.testEl.style.backgroundColor = rgba;
         this.testEl.style.fontSize = `${this.style.fontSize}px`;
 
@@ -97,10 +116,20 @@ export class SetStyles implements AfterViewInit {
         this.testEl.style.paddingBottom = `${this.style.paddingBottom}px`;
         this.testEl.style.paddingLeft = `${this.style.paddingLeft}px`;
 
-        setTimeout(() => {
-            this.attrColor.nativeElement.focus();
-            this.attrColor.nativeElement.select();
-        }, 0);
+        this.m_color.set(this.style.color);
+        this.m_bg_color.set(this.style.bgColor);
+        this.m_opacity.set(`${this.style.bgOpacity}`);
+        this.m_border_color.set(this.style.borderColor);
+        this.m_border_width.set(`${this.style.borderWidth}`);
+        this.m_border_radius.set(`${this.style.borderRadius}`);
+        this.m_border_style.set(this.style.borderStyle);
+        this.m_padding_top.set(`${this.style.paddingTop}`);
+        this.m_padding_left.set(`${this.style.paddingLeft}`);
+        this.m_padding_right.set(`${this.style.paddingRight}`);
+        this.m_padding_bottom.set(`${this.style.paddingBottom}`);
+
+        this.fontSizeRef().nativeElement.focus();
+        this.fontSizeRef().nativeElement.select();
     }
 
     /***********************************************************************************************
@@ -115,6 +144,8 @@ export class SetStyles implements AfterViewInit {
 
         this.style.color = newVal
         this.testEl.style.color = newVal;
+
+        this.m_color.set(newVal);
     }
 
     /***********************************************************************************************
@@ -127,10 +158,12 @@ export class SetStyles implements AfterViewInit {
 
         console.log(`new background color: ${newVal}`);
 
-        const rgba = this.hexToRGB(newVal, this.style.bgOpacity);
+        const rgba = this.utils.hexToRGB(newVal, this.style.bgOpacity);
         console.log(`rgba: ${rgba}`);
         this.style.bgColor = newVal;
         this.testEl.style.backgroundColor = rgba;
+
+        this.m_bg_color.set(newVal);
     }
 
     /***********************************************************************************************
@@ -145,9 +178,12 @@ export class SetStyles implements AfterViewInit {
 
         console.log(`new opacity: ${newVal}`);
         this.style.bgOpacity = opacity;
-        const rgba = this.hexToRGB(this.style.bgColor, opacity);
+
+        const rgba = this.utils.hexToRGB(this.style.bgColor, opacity);
         console.log(`rgba: ${rgba}`);
         this.testEl.style.backgroundColor = rgba;
+
+        this.m_opacity.set(newVal);
     }
 
     /***********************************************************************************************
@@ -158,18 +194,16 @@ export class SetStyles implements AfterViewInit {
      */
     onFontSizeChange(newVal: string){
 
-        let font_size = parseInt(newVal, 10);
+        this.m_font_size.set(newVal);
 
-        if(Number.isNaN(font_size) || (font_size < this.minFontSize)){
-            return;
+        let font_size = parseInt(newVal);
+        if(Number.isNaN(font_size) == false){
+            if(font_size >= this.minFontSize){
+                if(font_size <= this.maxFontSize){
+                    this.testEl.style.fontSize = `${font_size}px`;
+                }
+            }
         }
-        if(font_size > this.maxFontSize){
-            font_size = this.maxFontSize;
-        }
-        console.log(`new font size: ${font_size}`);
-        this.style.fontSize = font_size;
-        this.testEl.style.fontSize = `${font_size}px`;
-        this.fontSizeRef.nativeElement.value = `${font_size}`;
     }
 
     /***********************************************************************************************
@@ -178,13 +212,25 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onFontSizeBlur(newVal: string){
+    onFontSizeBlur(){
 
-        let font_size = parseInt(newVal);
+        let font_size = parseInt(this.m_font_size());
 
-        if(Number.isNaN(font_size) || (font_size < this.minFontSize)){
-            this.fontSizeRef.nativeElement.value = `${this.style.fontSize}`;
+        if(font_size == this.style.fontSize){
+            return;
         }
+        if(Number.isNaN(font_size) || (font_size < this.minFontSize)){
+            this.m_font_size.set(`${this.style.fontSize}`);
+            return;
+        }
+        if(font_size > this.maxFontSize){
+            font_size = this.maxFontSize;
+        }
+        console.log(`new font size: ${font_size}`);
+        this.style.fontSize = font_size;
+        this.testEl.style.fontSize = `${font_size}px`;
+
+        this.m_font_size.set(`${font_size}`);
     }
 
     /***********************************************************************************************
@@ -195,11 +241,12 @@ export class SetStyles implements AfterViewInit {
      */
     onBorderColorChange(newVal: string){
 
-        if(newVal != this.style.borderColor){
-            console.log(`new border color: ${newVal}`);
-            this.style.borderColor = newVal;
-            this.testEl.style.borderColor = newVal;
-        }
+        console.log(`new border color: ${newVal}`);
+
+        this.style.borderColor = newVal;
+        this.testEl.style.borderColor = newVal;
+
+        this.m_border_color.set(newVal);
     }
 
     /***********************************************************************************************
@@ -210,18 +257,14 @@ export class SetStyles implements AfterViewInit {
      */
     onBorderWidthChange(newVal: string){
 
-        let border_width = parseInt(newVal, 10);
+        this.m_border_width.set(newVal);
 
-        if(Number.isNaN(border_width)){
-            return;
+        let border_width = parseInt(newVal);
+        if(Number.isNaN(border_width) == false){
+            if(border_width <= this.maxBorderWidth){
+                this.testEl.style.borderWidth = `${border_width}px`;
+            }
         }
-        if(border_width > this.maxBorderWidth){
-            border_width = this.maxBorderWidth;
-        }
-        console.log(`new border width: ${border_width}`);
-        this.style.borderWidth = border_width;
-        this.testEl.style.borderWidth = `${border_width}px`;
-        this.borderWidthRef.nativeElement.value = `${border_width}`;
     }
 
     /***********************************************************************************************
@@ -230,13 +273,24 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onBorderWidthBlur(newVal: string){
+    onBorderWidthBlur(){
 
-        let border_width = parseInt(newVal, 10);
+        let border_width = parseInt(this.m_border_width());
 
-        if(Number.isNaN(border_width)){
-            this.borderWidthRef.nativeElement.value = `${this.style.borderWidth}`;
+        if(border_width == this.style.borderWidth){
+            return;
         }
+        if(Number.isNaN(border_width)){
+            this.m_border_width.set(`${this.style.borderWidth}`);
+        }
+        if(border_width > this.maxBorderWidth){
+            border_width = this.maxBorderWidth;
+        }
+        console.log(`new border width: ${border_width}`);
+        this.style.borderWidth = border_width;
+        this.testEl.style.borderWidth = `${border_width}px`;
+
+        this.m_border_width.set(`${border_width}`);
     }
 
     /***********************************************************************************************
@@ -247,10 +301,31 @@ export class SetStyles implements AfterViewInit {
      */
     onBorderRadiusChange(newVal: string){
 
-        let border_radius = parseInt(newVal, 10);
+        this.m_border_radius.set(newVal);
 
-        if(Number.isNaN(border_radius)){
+        let border_radius = parseInt(newVal);
+        if(Number.isNaN(border_radius) == false){
+            if(border_radius <= this.maxBorderRadius){
+                this.testEl.style.borderRadius = `${border_radius}px`;
+            }
+        }
+    }
+
+    /***********************************************************************************************
+     * fn          onBorderRadiusBlur
+     *
+     * brief
+     *
+     */
+    onBorderRadiusBlur(){
+
+        let border_radius = parseInt(this.m_border_radius());
+
+        if(border_radius == this.style.borderRadius){
             return;
+        }
+        if(Number.isNaN(border_radius)){
+            this.m_border_radius.set(`${this.style.borderRadius}`);
         }
         if(border_radius > this.maxBorderRadius){
             border_radius = this.maxBorderRadius;
@@ -258,22 +333,8 @@ export class SetStyles implements AfterViewInit {
         console.log(`new border radius: ${border_radius}`);
         this.style.borderRadius = border_radius;
         this.testEl.style.borderRadius = `${border_radius}px`;
-        this.borderRadiusRef.nativeElement.value = `${border_radius}`;
-    }
 
-    /***********************************************************************************************
-     * fn          onBorderWidthBlur
-     *
-     * brief
-     *
-     */
-    onBorderRadiusBlur(newVal: string){
-
-        let border_radius = parseInt(newVal, 10);
-
-        if(Number.isNaN(border_radius)){
-            this.borderRadiusRef.nativeElement.value = `${this.style.borderRadius}`;
-        }
+        this.m_border_radius.set(`${border_radius}`);
     }
 
     /***********************************************************************************************
@@ -285,8 +346,11 @@ export class SetStyles implements AfterViewInit {
     onBorderStyleChange(newStyle: string){
 
         console.log(`new border style: ${newStyle}`);
+
         this.style.borderStyle = newStyle;
         this.testEl.style.borderStyle = newStyle;
+
+        this.m_border_style.set(newStyle);
     }
 
     /***********************************************************************************************
@@ -297,18 +361,14 @@ export class SetStyles implements AfterViewInit {
      */
     onPaddingTopChange(newVal: string){
 
-        let padding_top = parseInt(newVal, 10);
+        this.m_padding_top.set(newVal);
 
-        if(Number.isNaN(padding_top)){
-            return;
+        let padding_top = parseInt(newVal);
+        if(Number.isNaN(padding_top ) == false){
+            if(padding_top <= this.maxPaddingTop){
+                this.testEl.style.paddingTop = `${padding_top}px`;
+            }
         }
-        if(padding_top > this.maxPaddingTop){
-            padding_top = this.maxPaddingTop;
-        }
-        console.log(`new padding top: ${padding_top}`);
-        this.style.paddingTop = padding_top;
-        this.testEl.style.paddingTop = `${padding_top}px`;
-        this.paddingTopRef.nativeElement.value = `${padding_top}`;
     }
 
     /***********************************************************************************************
@@ -317,13 +377,24 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onPaddingTopBlur(newVal: string){
+    onPaddingTopBlur(){
 
-        let padding_top = parseInt(newVal, 10);
+        let padding_top = parseInt(this.m_padding_top());
 
-        if(Number.isNaN(padding_top)){
-            this.paddingTopRef.nativeElement.value = `${this.style.paddingTop}`;
+        if(padding_top == this.style.paddingTop){
+            return;
         }
+        if(Number.isNaN(padding_top)){
+            this.m_padding_top.set(`${this.style.paddingTop}`);
+        }
+        if(padding_top > this.maxPaddingTop){
+            padding_top = this.maxPaddingTop;
+        }
+        console.log(`new padding top: ${padding_top}`);
+        this.style.paddingTop = padding_top;
+        this.testEl.style.paddingTop = `${padding_top}px`;
+
+        this.m_padding_top.set(`${padding_top}`);
     }
 
     /***********************************************************************************************
@@ -334,18 +405,14 @@ export class SetStyles implements AfterViewInit {
      */
     onPaddingRightChange(newVal: string){
 
-        let padding_right = parseInt(newVal, 10);
+        this.m_padding_right.set(newVal);
 
-        if(Number.isNaN(padding_right)){
-            return;
+        let padding_right = parseInt(newVal);
+        if(Number.isNaN(padding_right) == false){
+            if(padding_right <= this.maxPaddingRight){
+                this.testEl.style.paddingRight = `${padding_right}px`;
+            }
         }
-        if(padding_right > this.maxPaddingRight){
-            padding_right = this.maxPaddingRight;
-        }
-        console.log(`new padding right ${padding_right}`);
-        this.style.paddingRight = padding_right;
-        this.testEl.style.paddingRight = `${padding_right}px`;
-        this.paddingRightRef.nativeElement.value = `${padding_right}`;
     }
 
     /***********************************************************************************************
@@ -354,13 +421,24 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onPaddingRightBlur(newVal: string){
+    onPaddingRightBlur(){
 
-        let padding_right= parseInt(newVal, 10);
+        let padding_right= parseInt(this.m_padding_right());
 
-        if(Number.isNaN(padding_right)) {
-            this.paddingRightRef.nativeElement.value = `${this.style}`;
+        if(padding_right == this.style.paddingRight){
+            return;
         }
+        if(Number.isNaN(padding_right)) {
+            this.m_padding_right.set(`${this.style.paddingRight}`);
+        }
+        if(padding_right > this.maxPaddingRight){
+            padding_right = this.maxPaddingRight;
+        }
+        console.log(`new padding right ${padding_right}`);
+        this.style.paddingRight = padding_right;
+        this.testEl.style.paddingRight = `${padding_right}px`;
+
+        this.m_padding_right.set(`${padding_right}`);
     }
 
     /***********************************************************************************************
@@ -371,18 +449,14 @@ export class SetStyles implements AfterViewInit {
      */
     onPaddingBottomChange(newVal: string){
 
-        let padding_bottom = parseInt(newVal, 10);
+        this.m_padding_bottom.set(newVal);
 
-        if(Number.isNaN(padding_bottom)){
-            return;
+        let padding_bottom = parseInt(newVal);
+        if(Number.isNaN(padding_bottom) == false){
+            if(padding_bottom <= this.maxPaddingBottom){
+                this.testEl.style.paddingBottom = `${padding_bottom}px`;
+            }
         }
-        if(padding_bottom > this.maxPaddingBottom){
-            padding_bottom = this.maxPaddingBottom;
-        }
-        console.log(`new padding bottom ${padding_bottom}`);
-        this.style.paddingBottom = padding_bottom;
-        this.testEl.style.paddingBottom = `${padding_bottom}px`;
-        this.paddingBottomRef.nativeElement.value = `${padding_bottom}`;
     }
 
     /***********************************************************************************************
@@ -391,13 +465,24 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onPaddingBottomBlur(newVal: string){
+    onPaddingBottomBlur(){
 
-        let padding_bottom= parseInt(newVal, 10);
+        let padding_bottom= parseInt(this.m_padding_bottom());
 
-        if(Number.isNaN(padding_bottom)) {
-            this.paddingBottomRef.nativeElement.value = `${this.style.paddingBottom}`;
+        if(padding_bottom == this.style.paddingBottom){
+            return;
         }
+        if(Number.isNaN(padding_bottom)) {
+            this.m_padding_bottom.set(`${this.style.paddingBottom}`);
+        }
+        if(padding_bottom > this.maxPaddingBottom){
+            padding_bottom = this.maxPaddingBottom;
+        }
+        console.log(`new padding bottom ${padding_bottom}`);
+        this.style.paddingBottom = padding_bottom;
+        this.testEl.style.paddingBottom = `${padding_bottom}px`;
+
+        this.m_padding_bottom.set(`${padding_bottom}`);
     }
 
     /***********************************************************************************************
@@ -408,18 +493,14 @@ export class SetStyles implements AfterViewInit {
      */
     onPaddingLeftChange(newVal: string){
 
-        let padding_left = parseInt(newVal, 10);
+        this.m_padding_left.set(newVal);
 
-        if(Number.isNaN(padding_left)){
-            return;
+        let padding_left = parseInt(newVal);
+        if(Number.isNaN(padding_left) == false){
+            if(padding_left <= this.maxPaddingLeft){
+                this.testEl.style.paddingLeft = `${padding_left}px`;
+            }
         }
-        if(padding_left > this.maxPaddingLeft){
-            padding_left = this.maxPaddingLeft;
-        }
-        console.log(`new padding left ${padding_left}`);
-        this.style.paddingLeft = padding_left;
-        this.testEl.style.paddingLeft = `${padding_left}px`;
-        this.paddingLeftRef.nativeElement.value = `${padding_left}`;
     }
 
     /***********************************************************************************************
@@ -428,13 +509,24 @@ export class SetStyles implements AfterViewInit {
      * brief
      *
      */
-    onPaddingLeftBlur(newVal: string){
+    onPaddingLeftBlur(){
 
-        let padding_left = parseInt(newVal, 10);
+        let padding_left = parseInt(this.m_padding_left());
 
-        if(Number.isNaN(padding_left)) {
-            this.paddingLeftRef.nativeElement.value = `${this.style.paddingLeft}`;
+        if(padding_left == this.style.paddingLeft){
+            return;
         }
+        if(Number.isNaN(padding_left)) {
+            this.m_padding_left.set(`${this.style.paddingLeft}`);
+        }
+        if(padding_left > this.maxPaddingLeft){
+            padding_left = this.maxPaddingLeft;
+        }
+        console.log(`new padding left ${padding_left}`);
+        this.style.paddingLeft = padding_left;
+        this.testEl.style.paddingLeft = `${padding_left}px`;
+
+        this.m_padding_left.set(`${padding_left}`);
     }
 
     /***********************************************************************************************
@@ -445,9 +537,9 @@ export class SetStyles implements AfterViewInit {
      */
     save() {
 
-        this.storage.setAttrStyle(this.style, this.modal.dlgData.keyVal);
+        this.storage.setAttrStyle(this.style, this.dlgData.keyVal);
         console.log(this.style);
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
     /***********************************************************************************************
@@ -457,22 +549,7 @@ export class SetStyles implements AfterViewInit {
      *
      */
     close() {
-        this.modal.closeDlg();
-    }
-
-    /***********************************************************************************************
-     * @fn          hexToRGB
-     *
-     * @brief
-     *
-     */
-    hexToRGB(hex: string, alpha: number) {
-
-        let r = parseInt(hex.slice(1, 3), 16);
-        let g = parseInt(hex.slice(3, 5), 16);
-        let b = parseInt(hex.slice(5, 7), 16);
-
-        return `rgba(${r},${g},${b},${alpha})`;
+        this.dialogRef.close();
     }
 
 }

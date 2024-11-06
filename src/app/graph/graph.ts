@@ -1,15 +1,18 @@
 import {
     Component,
     OnInit,
-    OnDestroy,
-    ViewChild,
     HostBinding,
-    ElementRef
+    signal,
+    inject,
+    effect,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
+import {
+    DialogRef,
+    DIALOG_DATA} from '@angular/cdk/dialog';
+
 import { StorageService } from '../services/storage.service';
-import { EventsService } from '../services/events.service';
 import { UtilsService } from '../services/utils.service';
 
 import { CommonModule } from '@angular/common';
@@ -18,13 +21,11 @@ import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
 
 import Chart from 'chart.js/auto'
 
-import { Subscription } from 'rxjs';
-
 import * as gConst from '../gConst';
 import * as gIF from '../gIF'
 
-const noTime = 'time: --:--:--';
-const noValue = 'value: --.-';
+const NO_TIME = 'time: --:--:--';
+const NO_VALUE = 'value: --.-';
 
 @Component({
     selector: 'app-graph',
@@ -37,39 +38,37 @@ const noValue = 'value: --.-';
     ],
     templateUrl: './graph.html',
     styleUrls: ['./graph.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class Graph implements OnInit, OnDestroy {
+export class Graph implements OnInit {
 
-    @HostBinding('attr.id') hostID = 'graph-dlg';
+    hostID = 'graph-dlg';
 
     selAttr = {} as gIF.hostedAttr_t;
     selIdx = -1;
-    selTime = noTime;
-    selValue = noValue;
+    selTime = signal(NO_TIME);
+    selValue = signal(NO_VALUE);
 
-    duration = '';
-
-    newDataSubscription!: Subscription;
+    duration = signal('');
 
     chart: any;
 
-    constructor(
-        private modal: ModalService,
-        public events: EventsService,
-        public utils: UtilsService,
-        public storage: StorageService
-    ) {
-        this.selAttr = this.modal.dlgData.keyVal.value;
-    }
+    utils = inject(UtilsService);
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
 
-    /***********************************************************************************************
-     * fn          ngOnDestroy
-     *
-     * brief
-     *
-     */
-    ngOnDestroy(): void {
-        this.newDataSubscription.unsubscribe();
+    chart_data = effect(()=>{
+        const attr = this.storage.chartData();
+        setTimeout(()=>{
+            this.newData(attr);
+        }, 0);
+    })
+
+    constructor() {
         // ---
     }
 
@@ -81,12 +80,10 @@ export class Graph implements OnInit, OnDestroy {
      */
     ngOnInit() {
 
+        this.selAttr = this.dlgData.keyVal.value;
+
         this.createChart();
         this.setChartData();
-
-        this.newDataSubscription = this.events.subscribe('newData', (attr: gIF.hostedAttr_t)=>{
-            this.newData(attr);
-        });
     }
 
     /***********************************************************************************************
@@ -173,13 +170,13 @@ export class Graph implements OnInit, OnDestroy {
                         this.selIdx = elements[0].index;
                         const time = chart.data.labels![this.selIdx];
                         const value: any = chart.data.datasets[0].data[this.selIdx];
-                        this.selTime = `time: ${time}`;
-                        this.selValue = `value: ${value.toFixed(1)}`;
+                        this.selTime.set(`time: ${time}`);
+                        this.selValue.set(`value: ${value.toFixed(1)}`);
                     }
                     else {
                         this.selIdx = -1;
-                        this.selTime = noTime;
-                        this.selValue = noValue;
+                        this.selTime.set(NO_TIME);
+                        this.selValue.set(NO_VALUE);
                     }
                 }
             },
@@ -225,7 +222,7 @@ export class Graph implements OnInit, OnDestroy {
             }
         }
         const timeSpan = this.selAttr.timestamps[len - 1] - this.selAttr.timestamps[0];
-        this.duration = `${this.utils.secToTime(timeSpan)}`;
+        this.duration.set(`${this.utils.secToTime(timeSpan)}`);
 
         let step = 1;
         let max = Math.ceil(maxVal);
@@ -351,7 +348,7 @@ export class Graph implements OnInit, OnDestroy {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
 
@@ -370,8 +367,8 @@ export class Graph implements OnInit, OnDestroy {
         this.selAttr.attrVals.splice(this.selIdx, 1);
         this.selAttr.timestamps.splice(this.selIdx, 1);
         this.selIdx = -1;
-        this.selTime = noTime;
-        this.selValue = noValue;
+        this.selTime.set(NO_TIME);
+        this.selValue.set(NO_VALUE);
 
         this.setChartData();
     }
@@ -388,8 +385,8 @@ export class Graph implements OnInit, OnDestroy {
             if(attr.endPoint == this.selAttr.endPoint){
                 if(attr.clusterID == this.selAttr.clusterID){
                     this.selIdx = -1;
-                    this.selTime = noTime;
-                    this.selValue = noValue;
+                    this.selTime.set(NO_TIME);
+                    this.selValue.set(NO_VALUE);
 
                     this.setChartData();
                 }

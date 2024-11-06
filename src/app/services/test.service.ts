@@ -1,14 +1,21 @@
 ﻿///<reference types="chrome"/>
-import { Injectable, NgZone } from '@angular/core';
-import { EventsService } from './events.service';
+import {
+    Injectable,
+    effect,
+    inject
+} from '@angular/core';
 
 import * as gIF from '../gIF';
 import * as gConst from '../gConst';
+import { StorageService } from './storage.service';
+import { SerialLinkService } from './serial-link.service';
 
 @Injectable({
     providedIn: 'root',
 })
 export class TestService {
+
+    //freshSet = signal<gIF.attrSet_t>(<gIF.attrSet_t>{});
 
     t_1_set = {} as gIF.attrSet_t;
     t_2_set = {} as gIF.attrSet_t;
@@ -23,10 +30,30 @@ export class TestService {
     txBuf = new Uint8Array(1024);
     rwBuf = new gIF.rwBuf_t();
 
-    constructor(
-        private events: EventsService,
-        private ngZone: NgZone
-    ) {
+    wr_bind = effect(()=>{
+        const srcBind = this.storage.wrBind();
+        if(srcBind.extAddr == this.bind_1.extAddr){
+            if(srcBind.srcShortAddr == this.bind_1.srcShortAddr){
+                if(srcBind.srcEP == this.bind_1.srcEP){
+                    this.bind_1.dstExtAddr = srcBind.dstExtAddr;
+                    this.bind_1.dstEP = srcBind.dstEP;
+                }
+            }
+        }
+        if(srcBind.extAddr == this.bind_2.extAddr){
+            if(srcBind.srcShortAddr == this.bind_2.srcShortAddr){
+                if(srcBind.srcEP == this.bind_2.srcEP){
+                    this.bind_2.dstExtAddr = srcBind.dstExtAddr;
+                    this.bind_2.dstEP = srcBind.dstEP;
+                }
+            }
+        }
+    });
+
+    storage = inject(StorageService);
+    serialLink = inject(SerialLinkService);
+
+    constructor() {
         this.rwBuf.wrBuf = new DataView(this.txBuf.buffer);
 
         this.t_1_set.hostShortAddr = 2300;
@@ -113,25 +140,6 @@ export class TestService {
         setTimeout(()=>{
             this.bind_2_send();
         }, 1250);
-
-        this.events.subscribe('wr_bind', (srcBind: gIF.hostedBind_t)=>{
-            if(srcBind.extAddr == this.bind_1.extAddr){
-                if(srcBind.srcShortAddr == this.bind_1.srcShortAddr){
-                    if(srcBind.srcEP == this.bind_1.srcEP){
-                        this.bind_1.dstExtAddr = srcBind.dstExtAddr;
-                        this.bind_1.dstEP = srcBind.dstEP;
-                    }
-                }
-            }
-            if(srcBind.extAddr == this.bind_2.extAddr){
-                if(srcBind.srcShortAddr == this.bind_2.srcShortAddr){
-                    if(srcBind.srcEP == this.bind_2.srcEP){
-                        this.bind_2.dstExtAddr = srcBind.dstExtAddr;
-                        this.bind_2.dstEP = srcBind.dstEP;
-                    }
-                }
-            }
-        });
         /*
         setTimeout(()=>{
             this.nwk_test();
@@ -168,7 +176,9 @@ export class TestService {
         for(let i = 0; i < this.rwBuf.wrIdx; i++){
             this.t_1_set.attrVals[i] = this.txBuf[i];
         }
-        this.events.publish('attr_set', this.t_1_set);
+
+        this.serialLink.parseAttrSet(this.t_1_set);
+
         const tmo = 3000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.t_1_send();
@@ -191,7 +201,9 @@ export class TestService {
         for(let i = 0; i < this.rwBuf.wrIdx; i++){
             this.t_2_set.attrVals[i] = this.txBuf[i];
         }
-        this.events.publish('attr_set', this.t_2_set);
+
+        this.serialLink.parseAttrSet(this.t_2_set);
+
         const tmo = 3000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.t_2_send();
@@ -214,7 +226,9 @@ export class TestService {
         for(let i = 0; i < this.rwBuf.wrIdx; i++){
             this.light_1_set.attrVals[i] = this.txBuf[i];
         }
-        this.events.publish('attr_set', this.light_1_set);
+
+        this.serialLink.parseAttrSet(this.light_1_set);
+
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.light_1_send();
@@ -237,7 +251,9 @@ export class TestService {
         for(let i = 0; i < this.rwBuf.wrIdx; i++){
             this.light_2_set.attrVals[i] = this.txBuf[i];
         }
-        this.events.publish('attr_set', this.light_2_set);
+
+        this.serialLink.parseAttrSet(this.light_2_set);
+
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
             this.light_2_send();
@@ -252,7 +268,7 @@ export class TestService {
      */
     private bind_1_send() {
 
-        this.events.publish('cluster_bind', this.bind_1);
+        this.serialLink.addBind(this.bind_1);
 
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{
@@ -268,7 +284,7 @@ export class TestService {
      */
     private bind_2_send() {
 
-        this.events.publish('cluster_bind', this.bind_2);
+        this.serialLink.addBind(this.bind_2);
 
         const tmo = 5000 + Math.round(Math.random() * 3000);
         setTimeout(()=>{

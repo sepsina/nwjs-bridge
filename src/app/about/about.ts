@@ -1,10 +1,17 @@
 import {
     Component,
     OnInit,
-    HostBinding
+    HostBinding,
+    inject,
+    signal,
+    ChangeDetectionStrategy
 } from '@angular/core';
 
-import { ModalService } from '../services/modal.service';
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
+
 import { UtilsService } from '../services/utils.service';
 
 import { CommonModule } from '@angular/common';
@@ -24,19 +31,24 @@ import * as gIF from '../gIF'
         CdkDragHandle
     ],
     templateUrl: './about.html',
-    styleUrls: ['./about.scss']
+    styleUrls: ['./about.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class About implements OnInit {
 
-    @HostBinding('attr.id') hostID = 'about-dlg';
+    hostID = 'about-dlg';
 
-    recs: string[] = [];
-    title = '';
+    recs = signal<string[]>([]);
+    title = signal('');
 
-    constructor(
-        private modal: ModalService,
-        public utils: UtilsService
-    ) {
+    utils = inject(UtilsService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
         // ---
     }
 
@@ -47,14 +59,16 @@ export class About implements OnInit {
      *
      */
     ngOnInit(): void {
-        const attr = <gIF.hostedAttr_t>this.modal.dlgData.attr;
-        this.title = attr.name;
-        let partDesc: gIF.part_t = this.modal.dlgData.partsMap.get(attr.partNum);
+        const attr = <gIF.hostedAttr_t>this.dlgData.attr;
+        this.title.set(attr.name);
+        let partDesc: gIF.part_t = this.dlgData.partsMap.get(attr.partNum);
         if(partDesc) {
-            this.recs.push(`node: ${partDesc.devName}`);
-            this.recs.push(`part: ${partDesc.part}`);
-            this.recs.push(`S/N: ${this.utils.extToHex(attr.extAddr)}`);
-            this.recs.push(`url: ${partDesc.url}`);
+            const tmp = [];
+            tmp.push(`node: ${partDesc.devName}`);
+            tmp.push(`part: ${partDesc.part}`);
+            tmp.push(`S/N: ${this.utils.extToHex(attr.extAddr)}`);
+            tmp.push(`url: ${partDesc.url}`);
+            this.recs.set(tmp);
         }
     }
 
@@ -65,7 +79,7 @@ export class About implements OnInit {
      *
      */
     close() {
-        this.modal.closeDlg();
+        this.dialogRef.close();
     }
 
 }

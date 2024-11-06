@@ -1,6 +1,7 @@
 ///<reference types="chrome"/>
-import { Injectable} from '@angular/core';
-import { EventsService } from './events.service';
+import { Injectable, effect, inject} from '@angular/core';
+import { SerialLinkService } from './serial-link.service';
+import { StorageService } from './storage.service';
 import { UtilsService } from './utils.service';
 
 import * as gConst from '../gConst';
@@ -55,16 +56,20 @@ export class SerialPortService {
 
     slMsg = {} as sl_msg;
 
-    constructor(
-        private events: EventsService,
-        private utils: UtilsService
-    ) {
-        this.events.subscribe('wr_bind', (bind)=>{
-            this.wrBind(bind);
-        });
-        this.events.subscribe('zcl_cmd', (cmd)=>{
-            this.udpZclCmd(cmd);
-        });
+    zcl_cmd = effect(()=>{
+        const cmd = this.storage.zclCmd();
+        this.udpZclCmd(cmd);
+    });
+    wr_bind = effect(()=>{
+        const bind = this.storage.wrBind();
+        this.wrBind(bind);
+    });
+
+    serialLink = inject(SerialLinkService);
+    storage = inject(StorageService);
+    utils = inject(UtilsService);
+
+    constructor() {
         chrome.serial.onReceive.addListener((info: chrome.serial.onReceive.OnReceiveInfo)=>{
             if(info.connectionId === this.connID){
                 this.slOnData(info.data);
@@ -430,7 +435,8 @@ export class SerialPortService {
                         for(let i = 0; i < rxSet.valsLen; i++) {
                             rxSet.attrVals[i] = this.rwBuf.read_uint8();
                         }
-                        this.events.publish('attr_set', rxSet);
+
+                        this.serialLink.parseAttrSet(rxSet);
 
                         param.idx = memIdx + 1;
                         this.spCmd.param = JSON.stringify(param);
@@ -467,7 +473,8 @@ export class SerialPortService {
                         rxBind.clusterID = this.rwBuf.read_uint16_LE();
                         rxBind.dstExtAddr = this.rwBuf.read_uint64_LE();
                         rxBind.dstEP = this.rwBuf.read_uint8();
-                        this.events.publish('cluster_bind', rxBind);
+
+                        this.serialLink.addBind(rxBind);
 
                         param.idx = memIdx + 1;
                         this.spCmd.param = JSON.stringify(param);
@@ -522,7 +529,8 @@ export class SerialPortService {
                         zclRsp.endPoint = this.rwBuf.read_uint8();
                         zclRsp.clusterID = this.rwBuf.read_uint16_LE();
                         zclRsp.status = this.rwBuf.read_uint8();
-                        this.events.publish('zcl_rsp', zclRsp);
+
+                        this.storage.zclRsp.set(zclRsp);
                     }
                     if(this.spCmdQueue.length > 0) {
                         this.runCmd();

@@ -1,11 +1,11 @@
 <div class="col-top-strech" id="all-dlg"
      cdkDrag
      cdkDragRootElement="#corr-dlg"
-     cdkDragBoundary="#modal-container">
+     cdkDragBoundary=".cdk-overlay-container">
 
     <div class='row-right-stretch dlg-header'>
         <div class="row-left dlg-title" cdkDragHandle>
-            {{title}}
+            {{title()}}
         </div>
         <button (click)="close()">
             <i class="fa fa-times"></i>
@@ -15,9 +15,8 @@
         <div class="col-top-strech cards-common">
             <div class="row-center">
                 <label>units:</label>
-                <select #unitSel
-                        (change)="unitSelected(unitSel.value)" >
-                    @for(unit of allUnits; track unit; let i = $index) {
+                <select #unitSel [ngModel]="m_unit_sel()" (ngModelChange)="unitSelect($event)" >
+                    @for(unit of allUnits(); track unit.name; let i = $index) {
                         <option value="{{i}}">
                             {{unit.name}}
                         </option>
@@ -28,8 +27,9 @@
                 <label>offset:</label>
                 <input #offset
                        type="number"
-                       (change)="onOffsetChange(offset.value)"
-                       (blur)="onOffsetBlur(offset.value)">
+                       [ngModel]="m_offset()"
+                       (ngModelChange)="onOffsetChange($event)"
+                       (blur)="onOffsetBlur()">
             </div>
         </div>
     </div>

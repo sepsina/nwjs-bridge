@@ -1,14 +1,19 @@
 import {
     Component,
     ElementRef,
-    ViewChild,
     AfterViewInit,
-    HostBinding
+    viewChild,
+    inject,
+    signal
 } from '@angular/core';
+
+import {
+    DialogRef,
+    DIALOG_DATA
+} from '@angular/cdk/dialog';
 
 import { ModalService } from '../services/modal.service';
 import { StorageService } from '../services/storage.service';
-import { EventsService } from '../services/events.service';
 
 import * as gConst from '../gConst';
 import * as gIF from '../gIF'
@@ -28,15 +33,19 @@ import { CdkDrag, CdkDragHandle} from '@angular/cdk/drag-drop';
     ],
     templateUrl: './move-element.html',
     styleUrls: ['./move-element.scss'],
+    host: {
+        '[attr.id]': 'hostID',
+    },
 })
 export class MoveElement implements AfterViewInit {
 
-    @ViewChild('scrollSel') scrollSelRef!: ElementRef;
-    @HostBinding('attr.id') hostID = 'move-dlg';
+    hostID = 'move-dlg';
 
-    title = '';
+    scrollSelRef = viewChild.required('scrollSel', {read: ElementRef});
 
-    allScrolls: gIF.scroll_t[] = [];
+    title = signal('');
+
+    allScrolls = signal<gIF.scroll_t[]>([]);
     selScroll = {} as gIF.scroll_t;
     scrollIdx = 0;
 
@@ -48,11 +57,12 @@ export class MoveElement implements AfterViewInit {
 
     startFlag = true;
 
-    constructor(
-        private modal: ModalService,
-        public events: EventsService,
-        public storage: StorageService
-    ) {
+    modal = inject(ModalService);
+    storage = inject(StorageService);
+    dialogRef = inject(DialogRef);
+    dlgData = inject(DIALOG_DATA);
+
+    constructor() {
         // ---
     }
 
@@ -67,7 +77,7 @@ export class MoveElement implements AfterViewInit {
         setTimeout(() => {
             this.selAttr = this.modal.dlgData.selAttr;
             this.containerRef = this.modal.dlgData.containerRef;
-            this.title = `${this.selAttr.value.name}`;
+            this.title.set(`${this.selAttr.value.name}`);
             this.selAttr.value.drag = true;
 
             this.imgDim.height = this.modal.dlgData.imgDim.height;
@@ -76,16 +86,20 @@ export class MoveElement implements AfterViewInit {
             this.dragRef = this.modal.dlgData.dragRef;
             this.prevPos = this.dragRef.getFreeDragPosition();
 
-            this.allScrolls = JSON.parse(this.modal.dlgData.scrolls);
-            this.allScrolls[0].name = 'move to'
-            this.selScroll = this.allScrolls[0];
+            this.allScrolls.set(JSON.parse(this.modal.dlgData.scrolls));
+            //this.allScrolls[0].name = 'move to'
+            this.allScrolls.update((scrolls)=>{
+                scrolls[0].name = 'move to';
+                return [...scrolls];
+            });
+            this.selScroll = this.allScrolls()[0];
             this.scrollIdx = 0;
-            this.scrollSelRef.nativeElement.value = '0';
+            this.scrollSelRef().nativeElement.value = '0';
         }, 0);
     }
 
     /***********************************************************************************************
-     * fn          scrollSelChange
+     * fn          onScrollSelected
      *
      * brief
      *
@@ -97,7 +111,7 @@ export class MoveElement implements AfterViewInit {
     }
 
     /***********************************************************************************************
-     * fn          scrollSelChange
+     * fn          scrollSelect
      *
      * brief
      *
@@ -106,7 +120,10 @@ export class MoveElement implements AfterViewInit {
 
         if(this.startFlag == true){
             this.startFlag = false;
-            this.allScrolls.shift();
+            this.allScrolls.update((scrolls)=>{
+                scrolls.shift();
+                return [...scrolls];
+            });
             idx--;
             this.scrollIdx = idx;
             setTimeout(()=>{
@@ -115,10 +132,10 @@ export class MoveElement implements AfterViewInit {
             return;
         }
         this.scrollIdx = idx;
-        this.scrollSelRef.nativeElement.value = `${this.scrollIdx}`;
-        this.selScroll = this.allScrolls[idx];
+        this.scrollSelRef().nativeElement.value = `${this.scrollIdx}`;
+        this.selScroll = this.allScrolls()[idx];
 
-        if(this.allScrolls.length){
+        if(this.allScrolls().length){
             const x = 0;
             const y = (this.selScroll.yPos * this.imgDim.height) / 100;
 

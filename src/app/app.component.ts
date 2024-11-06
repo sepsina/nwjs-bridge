@@ -3,9 +3,12 @@ import {
     Component,
     ElementRef,
     OnInit,
-    ViewChild,
     OnDestroy,
-    HostListener
+    viewChild,
+    inject,
+    signal,
+    effect,
+    ChangeDetectionStrategy
 } from '@angular/core';
 import { DragDropModule } from "@angular/cdk/drag-drop";
 import { CdkDrag, CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
@@ -16,17 +19,21 @@ import {
     CdkMenuItem,
     CdkContextMenuTrigger,
 } from '@angular/cdk/menu';
+import {
+    Dialog,
+    DialogModule
+} from '@angular/cdk/dialog';
+
 import { CommonModule } from '@angular/common';
 
 import { ModalService } from './services/modal.service';
 import { StorageService } from './services/storage.service';
-import { EventsService } from './services/events.service';
 import { SerialLinkService } from './services/serial-link.service';
 import { UtilsService } from './services/utils.service';
 import { UdpService } from './services/udp.service';
-import { SerialPortService } from './services/serial-port.service';
+//import { SerialPortService } from './services/serial-port.service';
 // test
-//import { TestService } from './services/test.service';
+import { TestService } from './services/test.service';
 // test
 
 import * as gConst from './gConst';
@@ -41,19 +48,22 @@ import * as gIF from './gIF';
         CdkContextMenuTrigger,
         CdkMenu,
         CdkMenuItem,
-        ResizeObserverDirective
+        ResizeObserverDirective,
+        DialogModule
     ],
     templateUrl: 'app.component.html',
-    styleUrls: ['app.component.scss']
+    styleUrls: ['app.component.scss'],
+    host: {
+        '(window:beforeunload)': 'closeComms()'
+    },
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
-    @ViewChild('containerRef') containerRef!: ElementRef;
-    @ViewChild('floorPlanRef') floorPlanRef!: ElementRef;
-    @ViewChild('scrollSel') scrollSelRef!: ElementRef;
-    @ViewChild('cbDrag') cbDragRef!: ElementRef;
-
-    @ViewChild(CdkContextMenuTrigger) ctxMenu!: CdkContextMenuTrigger;
+    containerRef = viewChild.required('containerRef', {read: ElementRef});
+    floorPlanRef = viewChild.required('floorPlanRef', {read: ElementRef});
+    scrollSelRef = viewChild.required('scrollSel', {read: ElementRef});
+    cbDragRef = viewChild.required('cbDrag', {read: ElementRef});
 
     bkgImgWidth = 0;
     bkgImgHeight = 0;
@@ -61,8 +71,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     imgDim = {} as gIF.imgDim_t;
     planPath = '';
 
-    scrolls: gIF.scroll_t[] = [gConst.dumyScroll];
-    selScroll = this.scrolls[0];
+    selScroll!: gIF.scroll_t;
 
     partDesc: gIF.partDesc_t[] = [];
     partMap = new Map();
@@ -78,19 +87,26 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     corrFlag = false;
 
     footerTmo: any;
-    footerStatus = '';
+    footerStatus = signal('');
 
-    constructor(
-        public storage: StorageService,
-        private events: EventsService,
-        public modal: ModalService,
-        private httpClient: HttpClient,
-        private utils: UtilsService,
-        public serialLink: SerialLinkService,
-        public udp: UdpService,
-        public serial: SerialPortService,
-        //public testService: TestService
-    ) {
+    temp_event = effect(()=>{
+        setTimeout(()=>{
+            const temp = this.storage.tempEvent();
+            this.tempEvent(temp);
+        }, 0);
+    });
+
+    storage = inject(StorageService);
+    modal = inject(ModalService);
+    httpClient = inject(HttpClient);
+    utils = inject(UtilsService);
+    serialLink = inject(SerialLinkService);
+    udp = inject(UdpService);
+    //serial = inject(SerialPortService);
+    testService = inject(TestService);
+    dialog = inject(Dialog);
+
+    constructor() {
         // ---
     }
 
@@ -101,7 +117,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     ngAfterViewInit() {
-
+        /*
         try {
             window.resizeTo(window.screen.availWidth, window.screen.availHeight);
             window.resizeBy(-100, -100);
@@ -109,6 +125,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch(e) {
             console.log(e);
         }
+        */
+
         /*
         const net = window.nw.require('net');
         const client = new net.Socket();
@@ -136,17 +154,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     ngOnInit() {
-
-        this.events.subscribe('temp_event', (event: gIF.tempEvent_t)=>{
-            this.tempEvent(event);
-        });
-
-        this.events.subscribe('scrollDlgEvt', (newScrolls: gIF.scroll_t[])=>{
-            this.scrolls = newScrolls;
-            this.scrolls.unshift(gConst.dumyScroll);
-            this.storage.setScrolls(this.scrolls);
-        });
-
         setTimeout(() => {
             this.serialLink.initApp();
         }, 100);
@@ -168,10 +175,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * brief
      *
      */
-    @HostListener('window:beforeunload')
     closeComms(){
         this.udp.closeSocket();
-        this.serial.closeComPort();
+        //this.serial.closeComPort();
     };
 
     /***********************************************************************************************
@@ -208,7 +214,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         bkgImg.onload = ()=>{
             this.bkgImgWidth = bkgImg.width;
             this.bkgImgHeight = bkgImg.height;
-            const el = this.floorPlanRef.nativeElement;
+            const el = this.floorPlanRef().nativeElement;
             let divDim = el.getBoundingClientRect();
             this.imgDim.width = divDim.width;
             this.imgDim.height = Math.round((divDim.width / bkgImg.width) * bkgImg.height);
@@ -224,14 +230,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if(scrolls){
             const nvScrolls = JSON.parse(this.storage.getScrolls());
             if(nvScrolls){
-                this.scrolls = [];
-                for(let i = 0; i < nvScrolls.length; i++){
-                    this.scrolls.push(nvScrolls[i]);
-                }
-                setTimeout(()=>{
-                    this.scrollSelRef.nativeElement.value = '0';
-                }, 0);
+                this.storage.scrolls.set(nvScrolls);
             }
+            this.selScroll = this.storage.scrolls()[0];
         }
     }
 
@@ -247,7 +248,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
         let retStyle = {
             'color': attr.style.color,
-            'background-color': attr.style.bgColor,
+            //'background-color': attr.style.bgColor,
+            'background-color': this.utils.hexToRGB(attr.style.bgColor, attr.style.bgOpacity),
             'font-size.px': attr.style.fontSize,
             'border-color': attr.style.borderColor,
             'border-width.px': attr.style.borderWidth,
@@ -333,13 +335,21 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    setStyles() {
+    async setStyles() {
 
-        this.modal.dlgData = {
-            keyVal: this.selAttr
-        }
-        this.modal.dlgType = gIF.eDlgType.E_ATTR_STYLE;
-        this.modal.openDlg();
+        const { SetStyles } = await import('./set-styles/set-styles');
+        const dlgRef = this.dialog.open(SetStyles, {
+            data: {
+                keyVal: this.selAttr
+            },
+            restoreFocus: false
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`set styles dlg data: ${data}`);
+            this.storage.attrMap.update((map)=>{
+                return new Map(map);
+            });
+        });
     }
 
     /***********************************************************************************************
@@ -349,27 +359,39 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
 
-    setName() {
+    async setName() {
 
-        this.modal.dlgData = {
-            keyVal: this.selAttr
-        }
-        this.modal.dlgType = gIF.eDlgType.E_ATTR_NAME;
-        this.modal.openDlg();
+        const { SetName } = await import('./set-name/set-name');
+        const dlgRef = this.dialog.open(SetName, {
+            data: {
+                keyVal: this.selAttr
+            },
+            restoreFocus: false
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`set name dlg data: ${data}`);
+        });
     }
+
     /***********************************************************************************************
      * @fn          setCorr
      *
      * @brief
      *
      */
-    setCorr() {
+    async setCorr() {
 
-        this.modal.dlgData = {
-            keyVal: this.selAttr
-        }
-        this.modal.dlgType = gIF.eDlgType.E_UNITS;
-        this.modal.openDlg();
+        const { SetCorr } = await import('./set-corr/set-corr');
+        const dlgRef = this.dialog.open(SetCorr, {
+            data: {
+                keyVal: this.selAttr
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`set corr dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -378,12 +400,19 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    graph() {
-        this.modal.dlgData = {
-            keyVal: this.selAttr
-        }
-        this.modal.dlgType = gIF.eDlgType.E_GRAPH;
-        this.modal.openDlg();
+    async graph() {
+
+        const { Graph } = await import('./graph/graph');
+        const dlgRef = this.dialog.open(Graph, {
+            data: {
+                keyVal: this.selAttr
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`graph dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -392,15 +421,20 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    editScrolls() {
+    async editScrolls() {
 
-        this.modal.dlgData = {
-            scrolls: this.scrolls,
-            containerRef: this.containerRef.nativeElement,
-            imgDim: this.imgDim,
-        }
-        this.modal.dlgType = gIF.eDlgType.E_SCROLLS;
-        this.modal.openDlg();
+        const { EditScrolls } = await import('./edit-scrolls/edit-scrolls');
+        const dlgRef = this.dialog.open(EditScrolls, {
+            data: {
+                containerRef: this.containerRef().nativeElement,
+                imgDim: this.imgDim,
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`scrolls dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -409,12 +443,19 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    editBinds() {
-        this.modal.dlgData = {
-            partsMap: this.partMap
-        }
-        this.modal.dlgType = gIF.eDlgType.E_BINDS;
-        this.modal.openDlg();
+    async editBinds() {
+
+        const { EditBinds } = await import('./binds/binds.page');
+        const dlgRef = this.dialog.open(EditBinds, {
+            data: {
+                partsMap: this.partMap
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`binds dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -423,13 +464,18 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    editThermostats() {
+    async editThermostats() {
 
-        this.modal.dlgData = {
-            partsMap: this.partMap
-        }
-        this.modal.dlgType = gIF.eDlgType.E_STATS;
-        this.modal.openDlg();
+        const { EditStats } = await import('./x-stat/x_stat.page');
+        const dlgRef = this.dialog.open(EditStats, {
+            data: {
+                partsMap: this.partMap
+            },
+            restoreFocus: false,
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`stats dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -438,10 +484,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    showLogs() {
+    async showLogs() {
 
-        this.modal.dlgType = gIF.eDlgType.E_LOGS
-        this.modal.openDlg();
+        const { ShowLogs } = await import('./logs/show-logs');
+        const dlgRef = this.dialog.open(ShowLogs, {
+            restoreFocus: false,
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`logs dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -450,14 +501,20 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    showAbout() {
+    async showAbout() {
 
-        this.modal.dlgData = {
-            attr: this.selAttr.value,
-            partsMap: this.partMap
-        }
-        this.modal.dlgType = gIF.eDlgType.E_ABOUT;
-        this.modal.openDlg();
+        const { About } = await import('./about/about');
+        const dlgRef = this.dialog.open(About, {
+            data: {
+                attr: this.selAttr.value,
+                partsMap: this.partMap
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`about dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -466,12 +523,19 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * @brief
      *
      */
-    showSSR() {
-        this.modal.dlgData = {
-            attr: this.selAttr.value
-        }
-        this.modal.dlgType = gIF.eDlgType.E_SSR;
-        this.modal.openDlg();
+    async showSSR() {
+
+        const { SSR } = await import('./ssr/ssr');
+        const dlgRef = this.dialog.open(SSR, {
+            data: {
+                attr: this.selAttr.value
+            },
+            restoreFocus: false,
+
+        });
+        dlgRef.closed.subscribe((data)=>{
+            console.log(`ssr dlg data: ${data}`);
+        });
     }
 
     /***********************************************************************************************
@@ -486,14 +550,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if(i > 0){
             const x = 0;
-            const y = (this.scrolls[i].yPos * this.imgDim.height) / 100;
-            this.containerRef.nativeElement.scrollTo({
+            const y = (this.storage.scrolls()[i].yPos * this.imgDim.height) / 100;
+            this.containerRef().nativeElement.scrollTo({
                 top: y,
                 left: x,
                 behavior: 'smooth'
             });
             setTimeout(() => {
-                this.scrollSelRef.nativeElement.value = '0';
+                this.scrollSelRef().nativeElement.value = '0';
             }, 1000);
         }
     }
@@ -512,7 +576,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.imgDim.width = rect.width;
         this.imgDim.height = Math.round((rect.width / this.bkgImgWidth) * this.bkgImgHeight);
 
-        this.floorPlanRef.nativeElement.style.height = `${this.imgDim.height}px`
+        this.floorPlanRef().nativeElement.style.height = `${this.imgDim.height}px`
     }
 
     /***********************************************************************************************
@@ -536,13 +600,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             dragRef.disabled = true;
             htmlEl.style.cursor = 'pointer';
         }
-        this.footerStatus  = `${attr.name}: `;
-        this.footerStatus += `${partDesc.part}`;
-        this.footerStatus += ` -> ${partDesc.devName}`;
-        this.footerStatus += ` @ ${this.utils.extToHex(attr.extAddr)}`;
+        let status = '';
+        status  = `${attr.name}: `;
+        status += `${partDesc.part}`;
+        status += ` -> ${partDesc.devName}`;
+        status += ` @ ${this.utils.extToHex(attr.extAddr)}`;
+        this.footerStatus.set(status);
         clearTimeout(this.footerTmo);
         this.footerTmo = setTimeout(()=>{
-            this.footerStatus = '';
+            this.footerStatus.set('');
         }, 5000);
     }
 
@@ -554,9 +620,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     mouseLeaveAttr(keyVal: gIF.keyVal_t, attrRef: HTMLDivElement){
 
-        this.footerStatus = '';
+        this.footerStatus.set('');
 
-        attrRef.style.backgroundColor = keyVal.value.style.bgColor;
+        attrRef.style.backgroundColor = this.utils.hexToRGB(keyVal.value.style.bgColor, keyVal.value.style.bgOpacity);
         attrRef.style.cursor = 'default';
     }
 
@@ -568,7 +634,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     dragChanged(){
 
-        if(this.cbDragRef.nativeElement.checked) {
+        if(this.cbDragRef().nativeElement.checked) {
             this.dragFlag = true;
         }
         else {
@@ -621,9 +687,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     moveTo(idx: number){
 
         const x = 0;
-        const y = (this.scrolls[idx].yPos * this.imgDim.height) / 100;
+        const y = (this.storage.scrolls()[idx].yPos * this.imgDim.height) / 100;
 
-        this.containerRef.nativeElement.scrollTo({
+        this.containerRef().nativeElement.scrollTo({
             top: y,
             left: x,
             behavior: 'smooth'
@@ -687,7 +753,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                     zclCmd.cmd[0] = 0x11; // cluster spec cmd, not manu spec, client to srv dir, disable dflt rsp
                     zclCmd.cmd[1] = 0x00; // seq num -> not used
                     zclCmd.cmd[2] = cmd;  // ON/OFF command
-                    this.events.publish('zcl_cmd', zclCmd);
+
+                    this.storage.zclCmd.set(zclCmd);
                 }
             }
         }
