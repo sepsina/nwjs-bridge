@@ -58,11 +58,15 @@ export class SerialPortService {
 
     zcl_cmd = effect(()=>{
         const cmd = this.storage.zclCmd();
-        this.udpZclCmd(cmd);
+        if(this.validPortFlag == true){
+            this.udpZclCmd(cmd);
+        }
     });
     wr_bind = effect(()=>{
         const bind = this.storage.wrBind();
-        this.wrBind(bind);
+        if(this.validPortFlag == true){
+            this.wrBind(bind);
+        }
     });
 
     serialLink = inject(SerialLinkService);
@@ -435,9 +439,9 @@ export class SerialPortService {
                         for(let i = 0; i < rxSet.valsLen; i++) {
                             rxSet.attrVals[i] = this.rwBuf.read_uint8();
                         }
-
-                        this.serialLink.parseAttrSet(rxSet);
-
+                        setTimeout(() => {
+                            this.serialLink.parseAttrSet(rxSet);
+                        }, 0);
                         param.idx = memIdx + 1;
                         this.spCmd.param = JSON.stringify(param);
                         this.spCmd.retryCnt = gConst.RD_HOST_RETRY_CNT;
@@ -861,6 +865,10 @@ export class SerialPortService {
      *
      */
     async serialSend(msgLen: number) {
+
+        if(this.portOpenFlag == false){
+            return;
+        }
 
         let slMsgBuf = new Uint8Array(256);
         let msgIdx = 0;

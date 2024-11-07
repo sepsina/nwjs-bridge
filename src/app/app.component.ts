@@ -23,17 +23,18 @@ import {
     Dialog,
     DialogModule
 } from '@angular/cdk/dialog';
+import { CdkOverlayOrigin, OverlayModule } from '@angular/cdk/overlay';
 
 import { CommonModule } from '@angular/common';
 
-import { ModalService } from './services/modal.service';
+//import { ModalService } from './services/modal.service';
 import { StorageService } from './services/storage.service';
 import { SerialLinkService } from './services/serial-link.service';
 import { UtilsService } from './services/utils.service';
 import { UdpService } from './services/udp.service';
-//import { SerialPortService } from './services/serial-port.service';
+import { SerialPortService } from './services/serial-port.service';
 // test
-import { TestService } from './services/test.service';
+//import { TestService } from './services/test.service';
 // test
 
 import * as gConst from './gConst';
@@ -49,7 +50,8 @@ import * as gIF from './gIF';
         CdkMenu,
         CdkMenuItem,
         ResizeObserverDirective,
-        DialogModule
+        DialogModule,
+        OverlayModule
     ],
     templateUrl: 'app.component.html',
     styleUrls: ['app.component.scss'],
@@ -67,21 +69,12 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     bkgImgWidth = 0;
     bkgImgHeight = 0;
-    imgUrl = '';
     imgDim = {} as gIF.imgDim_t;
-    planPath = '';
 
-    selScroll!: gIF.scroll_t;
-
-    partDesc: gIF.partDesc_t[] = [];
     partMap = new Map();
-
-    loadFlag = false;
-    dragFlag = false;
-
-    dragRef!: CdkDrag;
     selAttr = {} as gIF.keyVal_t;
 
+    dragFlag = false;
     ctrlFlag = false;
     graphFlag = false;
     corrFlag = false;
@@ -97,14 +90,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     storage = inject(StorageService);
-    modal = inject(ModalService);
     httpClient = inject(HttpClient);
     utils = inject(UtilsService);
     serialLink = inject(SerialLinkService);
     udp = inject(UdpService);
-    //serial = inject(SerialPortService);
-    testService = inject(TestService);
+    serial = inject(SerialPortService);
+    //testService = inject(TestService);
     dialog = inject(Dialog);
+
+    ctx_open = signal(false);
+    ctx_origin!: CdkOverlayOrigin;
 
     constructor() {
         // ---
@@ -117,7 +112,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     ngAfterViewInit() {
-        /*
+
         try {
             window.resizeTo(window.screen.availWidth, window.screen.availHeight);
             window.resizeBy(-100, -100);
@@ -125,8 +120,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch(e) {
             console.log(e);
         }
-        */
-
         /*
         const net = window.nw.require('net');
         const client = new net.Socket();
@@ -177,7 +170,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     closeComms(){
         this.udp.closeSocket();
-        //this.serial.closeComPort();
+        this.serial.closeComPort();
     };
 
     /***********************************************************************************************
@@ -191,12 +184,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         const partsURL = '/assets/parts.json';
 
         this.httpClient.get(partsURL).subscribe({
-            //next: (parts: gIF.partDesc_t[])=>{
             next: (parts: any)=>{
-                this.partDesc = [];
                 this.partMap.clear();
                 for(let desc of parts){
-                    this.partDesc.push(desc);
                     let part = {} as gIF.part_t;
                     part.devName = desc.devName;
                     part.part = desc.part;
@@ -232,7 +222,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             if(nvScrolls){
                 this.storage.scrolls.set(nvScrolls);
             }
-            this.selScroll = this.storage.scrolls()[0];
         }
     }
 
@@ -248,7 +237,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
         let retStyle = {
             'color': attr.style.color,
-            //'background-color': attr.style.bgColor,
             'background-color': this.utils.hexToRGB(attr.style.bgColor, attr.style.bgOpacity),
             'font-size.px': attr.style.fontSize,
             'border-color': attr.style.borderColor,
@@ -337,6 +325,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     async setStyles() {
 
+        this.ctx_open.set(false);
+
         const { SetStyles } = await import('./set-styles/set-styles');
         const dlgRef = this.dialog.open(SetStyles, {
             data: {
@@ -361,6 +351,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     async setName() {
 
+        this.ctx_open.set(false);
+
         const { SetName } = await import('./set-name/set-name');
         const dlgRef = this.dialog.open(SetName, {
             data: {
@@ -380,6 +372,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     async setCorr() {
+
+        this.ctx_open.set(false);
 
         const { SetCorr } = await import('./set-corr/set-corr');
         const dlgRef = this.dialog.open(SetCorr, {
@@ -401,6 +395,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     async graph() {
+
+        this.ctx_open.set(false);
 
         const { Graph } = await import('./graph/graph');
         const dlgRef = this.dialog.open(Graph, {
@@ -503,6 +499,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     async showAbout() {
 
+        this.ctx_open.set(false);
+
         const { About } = await import('./about/about');
         const dlgRef = this.dialog.open(About, {
             data: {
@@ -524,6 +522,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      *
      */
     async showSSR() {
+        this.ctx_open.set(false);
 
         const { SSR } = await import('./ssr/ssr');
         const dlgRef = this.dialog.open(SSR, {
@@ -648,11 +647,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
      * brief
      *
      */
-    ctxMenuOpened(keyVal: gIF.keyVal_t, dragRef: CdkDrag){
+    ctxMenuOpen(keyVal: gIF.keyVal_t, origin: CdkOverlayOrigin){
 
-        this.dragRef = dragRef;
+        if(this.dragFlag == true){
+            return;
+        }
         this.selAttr = keyVal;
         const attr = keyVal.value;
+        this.ctx_origin = origin;
 
         this.ctrlFlag = false;
         this.corrFlag = false;
@@ -676,6 +678,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if(attr.attrVals.length > 1){
             this.graphFlag = true;
         }
+
+        this.ctx_open.set(true);
     }
 
     /***********************************************************************************************
@@ -757,6 +761,31 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                     this.storage.zclCmd.set(zclCmd);
                 }
             }
+        }
+    }
+
+    /***********************************************************************************************
+     * fn          disableRightClick
+     *
+     * brief
+     *
+     */
+    disableRightClick(event: MouseEvent){
+        event.preventDefault();
+    }
+
+    /***********************************************************************************************
+     * fn          ctxClose
+     *
+     * brief
+     *
+     */
+    ctxKeyEvt(event: KeyboardEvent){
+
+        console.log(event);
+
+        if(event.key == 'Escape'){
+            this.ctx_open.set(false);
         }
     }
 

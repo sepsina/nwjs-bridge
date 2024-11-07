@@ -48,7 +48,7 @@ export class ShowLogs implements AfterViewInit{
     new_log = effect(()=>{
         const logs = this.utils.msgLogs();
         if(this.cbScroll().nativeElement.checked) {
-            this.logList().nativeElement().scrollTop = this.logList().nativeElement.scrollHeight;
+            this.logList().nativeElement.scrollTop = this.logList().nativeElement.scrollHeight;
         }
     });
 
