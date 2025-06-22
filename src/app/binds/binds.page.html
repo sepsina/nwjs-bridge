@@ -1,0 +1,75 @@
+<div class="col-top-strech"
+     cdkDrag
+     cdkDragRootElement="#binds-dlg"
+     cdkDragBoundary=".cdk-overlay-container">
+
+    <div class='row-right-stretch dlg-header'>
+        <div class="row-left dlg-title" cdkDragHandle>
+            binds
+        </div>
+        <button (click)="close()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+    <div class="col-top-strech" id="dlg-body">
+        <div class="col-top-strech cards-common">
+            <div class="row-center">
+                <label>source:</label>
+                <select [ngModel]="m_src_sel()" (ngModelChange)="bindSrcSelect($event)">
+                    @for(bind of allBindSrc(); track bind.extAddr; let i = $index) {
+                        <option value="{{i}}">
+                            {{bind.name}}
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="row-right">
+                <label>name:</label>
+                <input type="text"
+                       size="12"
+                       [maxLength]="maxNameLen"
+                       [ngModel]="m_bind_name()"
+                       (ngModelChange)="onNameChange($event)"
+                       (blur)="onNameBlur()">
+                <button (click)="wrBindName()">
+                    save
+                </button>
+            </div>
+            <div class="col-top-strech part-desc">
+                @for(desc of bindSrcDesc(); track desc.key){
+                    <div>
+                        <span class="desc-label">{{desc.key}}</span>
+                        <span class="desc-value">{{desc.value}}</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-top-strech cards-common">
+            <div class="row-center">
+                <label>destination:</label>
+                <select [ngModel]="m_dst_sel()" (ngModelChange)="bindDstSelect($event)">
+                    @for(bind of freeBindDst(); track bind.extAddr; let i = $index) {
+                        <option value="{{i}}">
+                            {{bind.name}}
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-top-strech part-desc">
+                @for(desc of bindDstDesc(); track desc.key){
+                    <div>
+                        <span class="desc-label">{{desc.key}}</span>
+                        <span class="desc-value">{{desc.value}}</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class='row-right dlg-header'>
+        <button (click)="wrSrcBinds()">
+            send
+        </button>
+    </div>
+</div>
+
